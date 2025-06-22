@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BroRAX AI Chatbot - Segera Hadir</title>
+    <meta name="description" content="Hitung mundur peluncuran BroRAX, asisten AI Chatbot canggih. Dapatkan notifikasi saat kami meluncur!">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="particles-js"></div>
+
+    <div class="main-container">
+        <div class="content-box">
+            
+            <div class="header-content animate-on-load">
+                <i class="fas fa-robot icon-main"></i>
+                <h1>SEBENTAR LAGI...</h1>
+                <h2>BroRAX AI Siap Melayani Anda</h2>
+                <p class="description">
+                    Kami sedang mempersiapkan sebuah terobosan dalam teknologi AI Chatbot. BroRAX akan segera hadir untuk menjadi asisten andalan Anda.
+                </p>
+            </div>
+
+            <div id="countdown" class="countdown-container animate-on-load" style="animation-delay: 0.2s;">
+                <div class="time-block">
+                    <span id="days">00</span>
+                    <span>Hari</span>
+                </div>
+                <div class="time-block">
+                    <span id="hours">00</span>
+                    <span>Jam</span>
+                </div>
+                <div class="time-block">
+                    <span id="minutes">00</span>
+                    <span>Menit</span>
+                </div>
+                <div class="time-block">
+                    <span id="seconds">00</span>
+                    <span>Detik</span>
+                </div>
+            </div>
+
+            <div class="newsletter-section animate-on-load" style="animation-delay: 0.4s;">
+                <div id="form-container">
+                    <h3>Jangan sampai ketinggalan. Dapatkan notifikasi peluncuran!</h3>
+                    <form id="notify-form">
+                        <div class="input-group">
+                            <input type="email" name="email" placeholder="Alamat email Anda..." required>
+                            <button type="submit">Kirim</button>
+                        </div>
+                    </form>
+                </div>
+                <div id="success-message" style="display: none;">
+                    <h3>Terima kasih! 🙏</h3>
+                    <p>Kami akan memberitahu Anda saat BroRAX resmi diluncurkan.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

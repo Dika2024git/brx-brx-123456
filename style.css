@@ -1,0 +1,193 @@
+:root {
+    --primary-color: #00e5ff;
+    --dark-bg: #0f172a;
+    --content-bg: rgba(15, 23, 42, 0.7);
+    --text-color: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border-color: rgba(56, 189, 248, 0.2);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--dark-bg);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    overflow: hidden;
+}
+
+/* --- Latar Belakang Partikel --- */
+#particles-js {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: -1;
+}
+
+/* --- Kotak Konten & Animasi --- */
+.main-container {
+    max-width: 700px;
+    width: 100%;
+    text-align: center;
+}
+
+.content-box {
+    background: var(--content-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    padding: 40px 50px;
+}
+
+.animate-on-load {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.8s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Header & Teks --- */
+.icon-main {
+    font-size: 4rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    text-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+h2 {
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+.description {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    max-width: 500px;
+    margin: 0 auto 2.5rem auto;
+}
+
+/* --- Hitung Mundur --- */
+.countdown-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 2.5rem;
+}
+
+.time-block {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 10px;
+    width: 90px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+}
+
+.time-block span:first-child {
+    font-size: 2.5rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--primary-color);
+}
+
+.time-block span:last-child {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+/* --- Formulir & Pesan Sukses --- */
+.newsletter-section h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.input-group {
+    display: flex;
+    border-radius: 50px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.input-group input {
+    flex-grow: 1;
+    border: none;
+    background: transparent;
+    padding: 15px 25px;
+    color: var(--text-color);
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    outline: none;
+}
+
+.input-group button {
+    border: none;
+    background-color: var(--primary-color);
+    color: #000;
+    font-weight: 600;
+    padding: 0 30px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background-color 0.3s ease;
+}
+
+.input-group button:hover {
+    background-color: #8effff;
+}
+
+#success-message h3 {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+#success-message p {
+    color: var(--text-muted);
+}
+
+
+/* --- Responsive Design --- */
+@media (max-width: 768px) {
+    .content-box {
+        padding: 30px 20px;
+    }
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.1rem; }
+    .countdown-container { gap: 10px; }
+    .time-block { width: 70px; padding: 10px; }
+    .time-block span:first-child { font-size: 1.8rem; }
+    .input-group { flex-direction: column; border-radius: 15px; }
+    .input-group input { text-align: center; }
+    .input-group button { padding: 15px; }
+}
