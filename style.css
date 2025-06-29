@@ -1,12 +1,14 @@
-:root {
-    --primary-color: #00e5ff;
-    --dark-bg: #0f172a;
-    --content-bg: rgba(15, 23, 42, 0.7);
-    --text-color: #e2e8f0;
-    --text-muted: #94a3b8;
-    --border-color: rgba(56, 189, 248, 0.2);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+        
+@font-face {
+      font-family: 'MyCustomFont';
+      src: url('Bahu.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
 }
-
+    
+/* Reset dan Pengaturan Dasar Global */
 * {
     margin: 0;
     padding: 0;
@@ -14,180 +16,811 @@
 }
 
 body {
-    font-family: 'Poppins', sans-serif;
-    background-color: var(--dark-bg);
-    color: var(--text-color);
-    display: flex;
+  height: 100%;
+  font-family: 'Inter', 'Poppins', sans-serif;
+  background-color: #f7f8fc; /* Warna latar sedikit abu-abu untuk kontras */
+  color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding-top: 75px; /* Ruang untuk header fixed */
+}
+
+/* ======================================================= */
+/* ===    KOMPONEN OVERLAY MANDIRI (TANPA VARIABEL CSS)  === */
+/* ======================================================= */
+
+/* 1. GAYA OVERLAY UTAMA
+   Semua nilai yang sebelumnya ada di variabel kini ditulis langsung.
+*/
+.overlay-container {
+    /* Properti Inti: Posisi Fixed & z-index */
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    
+    display: none;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    padding: 20px;
-    overflow: hidden;
-}
-
-/* --- Latar Belakang Partikel --- */
-#particles-js {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    z-index: -1;
-}
-
-/* --- Kotak Konten & Animasi --- */
-.main-container {
-    max-width: 700px;
-    width: 100%;
-    text-align: center;
-}
-
-.content-box {
-    background: var(--content-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
-    padding: 40px 50px;
-}
-
-.animate-on-load {
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(5px);
     opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 0.8s ease-out forwards;
+    transition: opacity 0.3s ease-in-out;
+    font-family: 'Inter', sans-serif;
 }
 
-@keyframes fadeInUp {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+/* 2. GAYA UNTUK ELEMEN ANAK (CHILD ELEMENTS) */
+.overlay-container.show { 
+    display: flex; 
+    opacity: 1; 
 }
 
-/* --- Header & Teks --- */
-.icon-main {
-    font-size: 4rem;
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-    text-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
-}
-
-h1 {
-    font-size: 2.2rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-
-h2 {
-    font-size: 1.3rem;
-    font-weight: 400;
-    color: var(--text-muted);
-    margin-bottom: 1.5rem;
-}
-
-.description {
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--text-muted);
-    max-width: 500px;
-    margin: 0 auto 2.5rem auto;
-}
-
-/* --- Hitung Mundur --- */
-.countdown-container {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin-bottom: 2.5rem;
-}
-
-.time-block {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 15px;
-    border-radius: 10px;
-    width: 90px;
+.overlay-content {
+    position: relative;
+    width: 92%;
+    max-width: 900px;
+    background-color: #ffffff;
+    border-radius: clamp(1rem, 0.71rem + 1.4vw, 1.5rem);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: scale(0.95); opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border-color);
+}
+.overlay-container.show .overlay-content { transform: scale(1); opacity: 1; }
+
+.tombol-tutup {
+    position: absolute; 
+    top: clamp(0.75rem, 0.61rem + 0.7vw, 1.25rem); 
+    right: clamp(0.75rem, 0.61rem + 0.7vw, 1.25rem);
+    background-color: #e2e8f0; border: none;
+    width: 32px; height: 32px;
+    border-radius: 50%; font-size: 1.5rem; color: #64748b;
+    cursor: pointer; z-index: 10;
+    display: flex; justify-content: center; align-items: center;
+    transition: all 0.2s ease;
+}
+.tombol-tutup:hover { background-color: #cbd5e1; transform: rotate(180deg); }
+
+.overlay-main-content { display: flex; overflow: hidden; border-radius: inherit; }
+.overlay-visual { flex: 1 1 40%; background-color: #1e293b; position: relative; min-height: 450px; }
+.icon-bg-wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.overlay-visual i { position: absolute; color: #3b82f6; opacity: 0.1; animation: floatAnim 8s ease-in-out infinite; }
+.overlay-visual .icon1 { font-size: 8rem; top: 10%; left: 10%; animation-delay: 0s; }
+.overlay-visual .icon2 { font-size: 5rem; top: 30%; right: 5%; animation-delay: 2s; animation-duration: 10s; }
+.overlay-visual .icon3 { font-size: 6rem; bottom: 15%; left: 20%; animation-delay: 4s; }
+.overlay-visual .icon4 { font-size: 4rem; bottom: 50%; left: 45%; animation-delay: 1s; animation-duration: 9s; }
+.overlay-visual .icon5 { font-size: 10rem; opacity: 0.15; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #4f46e5; animation: none; }
+
+.overlay-text-content {
+    flex: 1 1 60%;
+    padding: clamp(1.5rem, 1.07rem + 2.1vw, 2.75rem) clamp(2rem, 1.43rem + 2.8vw, 3.5rem);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+}
+.overlay-header h2 { 
+    font-family: 'Poppins', sans-serif; 
+    color: #1e293b; 
+    font-size: clamp(1.5rem, 1.21rem + 1.2vw, 2rem); 
+    margin: 0 0 clamp(0.5rem, 0.43rem + 0.35vw, 0.75rem) 0; 
+}
+.overlay-header p { 
+    color: #334155; 
+    margin: 0; 
+    font-size: clamp(0.9rem, 0.83rem + 0.35vw, 1rem); 
+}
+.overlay-body { margin: clamp(1rem, 0.71rem + 1.4vw, 2rem) 0; }
+#daftar-fitur-baru { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: clamp(0.75rem, 0.61rem + 0.7vw, 1.25rem); }
+#daftar-fitur-baru li { display: flex; align-items: center; gap: clamp(0.75rem, 0.61rem + 0.7vw, 1.25rem); padding: clamp(0.75rem, 0.61rem + 0.7vw, 1.25rem); background-color: #f1f5f9; border-radius: 12px; opacity: 0; }
+.overlay-container.show #daftar-fitur-baru li { animation: cardEntry 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.fitur-icon { flex-shrink: 0; width: 45px; height: 45px; background-color: #3b82f6; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; }
+.fitur-info strong { display: block; color: #1e293b; font-family: 'Poppins', sans-serif; font-weight: 600; font-size: clamp(0.95rem, 0.91rem + 0.19vw, 1rem); }
+.fitur-info span { color: #334155; font-size: clamp(0.85rem, 0.81rem + 0.19vw, 0.9rem); }
+
+.overlay-footer { 
+    border-top: 1px solid #e2e8f0; 
+    padding-top: clamp(1rem, 0.71rem + 1.4vw, 2rem); 
+    margin-top: clamp(1rem, 0.71rem + 1.4vw, 2rem); 
+    display: flex; justify-content: space-between; align-items: center; 
+}
+.overlay-footer p { margin: 0; color: #94a3b8; font-size: clamp(0.75rem, 0.71rem + 0.19vw, 0.85rem); }
+.tombol-utama { 
+    background-color: #3b82f6; color: white; border: none; 
+    padding: clamp(0.5rem, 0.43rem + 0.35vw, 0.75rem) clamp(1rem, 0.71rem + 1.4vw, 2rem); 
+    border-radius: 8px; cursor: pointer; 
+    font-size: clamp(0.9rem, 0.83rem + 0.35vw, 1rem); 
+    font-family: 'Poppins', sans-serif; font-weight: 500; 
+    transition: all 0.2s ease; 
+}
+.tombol-utama:hover { background-color: #2563eb; box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39); }
+
+/* 3. KEYFRAMES ANIMASI */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes floatAnim { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+@keyframes cardEntry { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+
+/* 4. MEDIA QUERIES RESPONSIVE */
+@media (min-width: 1400px) { .overlay-content { max-width: 1000px; } }
+@media (max-width: 992px) { .overlay-main-content { flex-direction: column; } .overlay-visual { min-height: 220px; } }
+@media (max-width: 576px) {
+    .overlay-visual { display: none; }
+    .overlay-text-content { padding: clamp(1.5rem, 1.07rem + 2.1vw, 2.75rem) clamp(1rem, 0.71rem + 1.4vw, 2rem); }
+    .overlay-footer { flex-direction: column; align-items: stretch; gap: clamp(0.75rem, 0.61rem + 0.7vw, 1.25rem); }
+    .overlay-footer p { order: 2; text-align: center; }
+    .tombol-utama { order: 1; text-align: center; }
+}
+@media (max-width: 360px) {
+    .overlay-text-content { padding: clamp(1rem, 0.71rem + 1.4vw, 2rem) clamp(0.75rem, 0.61rem + 0.7vw, 1.25rem); }
+    .fitur-icon { width: 38px; height: 38px; font-size: 1rem; }
 }
 
-.time-block span:first-child {
-    font-size: 2.5rem;
-    font-weight: 600;
-    line-height: 1.1;
-    color: var(--primary-color);
+/* Konten Utama */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-width: 850px;
+  width: 100%;
+  margin: 0 auto;
+  /* PERUBAHAN DI SINI:
+    Padding bawah ditingkatkan dari 6rem menjadi 12rem untuk memastikan
+    pesan terakhir tidak tertutup oleh area input dan tombol opsi.
+  */
+  padding: 0 1rem 12rem 1rem;
 }
 
-.time-block span:last-child {
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    letter-spacing: 1px;
+/* Header Utama */
+.main-header {
+    background-color: #ffffff;
+    padding: 15px 30px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1002;
 }
 
-/* --- Formulir & Pesan Sukses --- */
-.newsletter-section h3 {
-    font-size: 1rem;
-    font-weight: 500;
-    margin-bottom: 1rem;
-}
-
-.input-group {
+.header-content {
     display: flex;
-    border-radius: 50px;
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-    background: rgba(0, 0, 0, 0.2);
+    align-items: center;
 }
 
-.input-group input {
+.header-title {
+    font-family: 'MyCustomFont', sans-serif;
+    font-size: 20px;
+    font-weight: bold;
+    /*margin-left: 20px;*/
+}
+
+.teks-beranda {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #b0b8c4;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Kotak Chat */
+/* Kustomisasi Scrollbar untuk Tampilan Bersih */
+.chat-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-box::-webkit-scrollbar-thumb {
+    background: #cdd2d9;
+    border-radius: 10px;
+}
+
+.chat-box::-webkit-scrollbar-thumb:hover {
+    background: #b0b8c4;
+}
+
+/* Kotak Chat */
+.chat-box {
     flex-grow: 1;
-    border: none;
-    background: transparent;
-    padding: 15px 25px;
-    color: var(--text-color);
-    font-family: 'Poppins', sans-serif;
-    font-size: 1rem;
-    outline: none;
+    height: 100%;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    scroll-behavior: smooth;
 }
 
-.input-group button {
-    border: none;
-    background-color: var(--primary-color);
-    color: #000;
-    font-weight: 600;
-    padding: 0 30px;
+/* Pesan Chat yang Super Keren */
+.message {
+  position: fixed;
+  max-width: 75%;
+  padding: 14px 20px;
+  border-radius: 22px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  font-size: 0.98rem;
+  position: relative;
+}
+
+.message.user {
+  align-self: flex-end;
+  border-bottom-right-radius: 3px;
+  background: linear-gradient(135deg, #c2ffd8 0%, #465efb 100%);
+  color: #2b2b2b;
+  box-shadow: 0 4px 15px -2px rgba(70, 94, 251, 0.3);
+}
+
+.message.bot {
+  align-self: flex-start;
+}
+
+/* ... (kode CSS Anda yang lain tidak berubah) ... */
+
+
+/* === BLOK CSS TAMBAHAN (Sesuai Saran Sebelumnya) === */
+
+/* Mengatur agar pesan menjadi flex container untuk penataan internal */
+.message {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Kontainer untuk teks pesan */
+.message-text {
+    max-width: 100%;
+    word-wrap: break-word;
+}
+
+/* --- PERUBAHAN DI SINI ---
+  Wrapper untuk timestamp dan ikon sekarang diatur sepenuhnya oleh CSS.
+*/
+.message-meta {
+    display: flex;
+    align-items: center;
+    /* Properti 'gap' dan 'align-self' diganti dengan 'justify-content'. */
+    /* Ini akan mendorong ikon ke kiri dan timestamp ke kanan dari kontainer. */
+    gap: 30px;
+    font-size: 10px;
+    margin-top: 8px; /* Jarak dari teks di atasnya */
+    color: #6c757d; /* Warna default untuk metadata di pesan bot */
+}
+
+/* Kustomisasi warna metadata untuk pesan pengguna agar terbaca */
+.message.user .message-meta {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Gaya umum untuk ikon edit dan salin */
+.copy-icon,
+.edit-icon {
     cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: background-color 0.3s ease;
+    transition: color 0.2s, transform 0.2s;
 }
 
-.input-group button:hover {
-    background-color: #8effff;
+.copy-icon:hover,
+.edit-icon:hover {
+    color: #3c4043; /* Warna hover untuk ikon di pesan bot */
+    transform: scale(1.15);
 }
 
-#success-message h3 {
-    font-size: 1.5rem;
-    color: var(--primary-color);
-}
-#success-message p {
-    color: var(--text-muted);
+/* Kustomisasi warna hover untuk ikon di pesan pengguna */
+.message.user .copy-icon:hover,
+.message.user .edit-icon:hover {
+    color: #ffffff; /* Warna hover untuk ikon di pesan user */
 }
 
+/* === AKHIR DARI BLOK CSS TAMBAHAN === */
 
-/* --- Responsive Design --- */
-@media (max-width: 768px) {
-    .content-box {
-        padding: 30px 20px;
-    }
-    h1 { font-size: 1.8rem; }
-    h2 { font-size: 1.1rem; }
-    .countdown-container { gap: 10px; }
-    .time-block { width: 70px; padding: 10px; }
-    .time-block span:first-child { font-size: 1.8rem; }
-    .input-group { flex-direction: column; border-radius: 15px; }
-    .input-group input { text-align: center; }
-    .input-group button { padding: 15px; }
+
+/* ... (sisa kode CSS Anda tidak berubah) ... */
+
+/* Area Input yang Profesional (DENGAN PERUBAHAN) */
+.input-area {
+  /* Pengaturan Posisi Fixed */
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+
+  /* Menyesuaikan lebar agar sama dengan container utama */
+  max-width: 850px;
+  width: calc(100% - 2rem); /* Lebar responsif dengan padding */
+
+  /* Gaya Asli */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: #ffffff;
+  border-radius: 30px;
+  box-shadow: 0 5px 25px -5px rgba(0, 0, 0, 0.1);
+  border: 2px dashed #e5e7eb;
+}
+
+.input-area input {
+  flex-grow: 1;
+  font-size: 1rem;
+  font-family: 'Inter', sans-serif;
+  border: none;
+  background: transparent;
+  padding: 0.5rem;
+  color: #333;
+}
+
+.input-area input:focus {
+  outline: none;
+}
+
+.buttonipar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 20px;
+  border: none;
+  background: linear-gradient(135deg, #2d5ae2, #6fb3ff);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.buttonipar:hover {
+  background: linear-gradient(135deg, #2d39e2, #6fa6ff);
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(111,181,255,0.4);
+}
+
+.buttonipar:active {
+  transform: scale(0.95);
+  background: linear-gradient(135deg, #2d5ae2, #6fb3ff);
+}
+
+.buttonipar:disabled {
+  background: linear-gradient(135deg, #9ca3af, #6b7280);
+  color: #f3f4f6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.versi-box {
+  position: fixed;
+  background: #e8f0fe;
+  border-radius: 15px;
+  padding: 8px 15px;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d2e3fc;
+  transform: none;
+  top: 1;
+  right: 0;
+}
+
+.versi-text {
+  font-size: 0.9rem;
+  color: #1967d2;
+  font-weight: 500;
+}
+
+.versi-lordicon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Status Offline - Ditingkatkan */
+.offline {
+  color: #c5221f;
+  background-color: #fce8e6;
+  border: 1px solid #f9d8d6;
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+}
+
+.ai-disclaimer {
+position: fixed; /* Tetap di posisi yang sama saat di-scroll */
+bottom: 0;
+left: 0;
+width: 100%;
+background-color: #f8f9fa; /* Warna latar belakang yang lembut */
+border-top: 1px solid #e9ecef; /* Garis tipis sebagai pemisah */
+padding: 10px 20px;
+box-sizing: border-box; /* Padding tidak menambah lebar total */
+display: flex; /* Menggunakan flexbox untuk alignment */
+justify-content: center; /* Teks dan ikon di tengah horizontal */
+align-items: center; /* Teks dan ikon di tengah vertikal */
+gap: 8px; /* Jarak antara ikon dan teks */
+color: #6c757d; /* Warna teks yang tidak terlalu mencolok */
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+font-size: 13px; /* Ukuran font yang pas untuk teks sekunder */
+text-align: center;
+z-index: 1000; /* Memastikan disclaimer selalu di atas konten lain */
+/* Transisi untuk efek halus jika ada perubahan */
+transition: background-color 0.3s ease;
+}
+
+.ai-disclaimer .icon {
+/* Atur ukuran ikon SVG */
+width: 16px;
+height: 16px;
+flex-shrink: 0; /* Mencegah ikon menyusut */
+}
+        
+/* === BLOK CSS CHATBOT OPTIONS YANG DITINGKATKAN === */
+
+.chatbot-options {
+    position: fixed;
+    bottom: 120px; /* Sedikit dinaikkan agar ada ruang napas dari input area */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    
+    max-width: 850px;
+    width: calc(100% - 2rem);
+
+    display: flex;
+    gap: 12px; /* Jarak antar tombol sedikit diperbesar */
+    overflow-x: auto;
+    padding: 5px 0 15px 0; /* Memberi padding bawah untuk scrollbar agar tidak terlalu mepet */
+    
+    /* Menghilangkan scrollbar bawaan untuk tampilan lebih bersih */
+    scrollbar-width: none; /* Untuk Firefox */
+    -ms-overflow-style: none;  /* Untuk Internet Explorer 10+ */
+}
+
+/* Menghilangkan scrollbar untuk browser berbasis WebKit (Chrome, Safari) */
+.chatbot-options::-webkit-scrollbar {
+    display: none;
+}
+
+.chatbot-options button {
+    background-color: rgba(255, 255, 255, 0.85); /* Latar semi-transparan, konsisten dengan header */
+    backdrop-filter: blur(8px); /* Efek glassmorphism yang halus */
+    -webkit-backdrop-filter: blur(8px);
+    
+    color: #1a73e8; /* Warna teks utama yang konsisten */
+    border: 2px dotted #d2e3fc; /* Border tipis untuk definisi */
+    padding: 10px 18px; /* Padding sedikit lebih besar untuk area sentuh yang nyaman */
+    border-radius: 18px; /* Radius yang lebih modern */
+    cursor: pointer;
+    flex-shrink: 0; /* Mencegah tombol menyusut */
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap; /* Menjaga teks tetap dalam satu baris */
+    
+    display: inline-flex; /* Agar ikon dan teks sejajar dengan baik */
+    align-items: center;
+    gap: 8px; /* Jarak antara ikon dan teks */
+    
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Bayangan halus untuk efek melayang */
+    transition: all 0.25s ease-out; /* Transisi yang lebih mulus untuk semua properti */
+}
+
+.chatbot-options button:hover {
+    background-color: #e8f0fe; /* Warna latar saat hover yang lebih jelas */
+    transform: translateY(-3px) scale(1.03); /* Efek mengangkat saat hover */
+    box-shadow: 0 6px 16px rgba(26, 115, 232, 0.15); /* Bayangan lebih kuat saat hover */
+    color: #185abc; /* Warna teks sedikit lebih gelap saat hover */
+}
+
+.chatbot-options button:active {
+    transform: translateY(-1px) scale(1); /* Efek menekan */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Kembali ke bayangan semula */
+}
+
+.chatbot-options button i {
+    font-size: 15px; /* Ukuran ikon disesuaikan */
+    vertical-align: middle; /* Memastikan ikon sejajar sempurna */
+}
+
+/* === AKHIR BLOK YANG DITINGKATKAN === */
+
+/* Style untuk Fitur Edit */
+.edit-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.edit-textarea {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 15px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 50px;
+  margin-bottom: 8px;
+}
+
+.edit-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.edit-controls button {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.edit-controls .save-edit-btn {
+  background-color: #4CAF50; /* Green */
+  color: white;
+}
+
+.edit-controls .cancel-edit-btn {
+  background-color: #f1f1f1; /* Light Gray */
+  color: black;
+}
+
+@keyframes colorCycle {
+  0% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(180deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+lord-icon.color-cycle {
+  animation: colorCycle 5s linear infinite;
+}
+
+.action-icons {
+  display: flex;
+  gap: 12px; /* Ini yang atur jarak antar ikon */
+  align-items: center;
+  flex-wrap: wrap; /* Kalau ikon kebanyakan, biar otomatis pindah baris */
+}
+
+.action-icons i {
+  font-size: 11px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.action-icons i:hover {
+  color: #007bff;
+  transform: scale(1.1);
+}
+
+/* Kode lainnya... */
+
+/* Gaya untuk Blok Kode dari Markdown */
+pre {
+    background-color: #2e2e2e;
+    color: #f2f2f2;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+    white-space: pre-wrap; /* Agar bisa wrap */
+    word-wrap: break-word;
+    font-family: 'Courier New', Courier, monospace;
+    margin: 10px 0;
+}
+
+code {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.cog-3d-spin {
+    font-size: 20px;
+    color: white;
+    animation: spin 2s linear infinite;
+  }
+
+  @keyframes spin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Tombol Titik Tiga */
+.menu-button {
+    background-color: white;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-button:hover {
+    background-color: #e3e3e3;
+}
+
+.menu-button svg {
+    width: 15px;
+    height: 15px;
+    fill: #333;
+}
+
+/* --- Konten Dropdown Menu --- */
+.dropdown-content {
+    display: none; /* Sembunyikan menu secara default */
+    position: absolute;
+    right: 0; /* Posisikan di kanan */
+    top: calc(100% + 5px); /* Posisikan di bawah tombol */
+    background-color: white;
+    min-width: 200px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    z-index: 1;
+    overflow: hidden; /* Agar border-radius terlihat pada item */
+}
+
+/* Tampilkan menu ketika class 'show' ditambahkan oleh JavaScript */
+.dropdown-content.show {
+    display: block;
+}
+
+/* Link di dalam dropdown */
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block; /* Agar setiap link memenuhi lebar wadah */
+    font-size: 1em;
+}
+
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+/* Akhir */
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  
+  /* body */
+  body {
+  height: 100%;
+  font-family: 'Inter', 'Poppins', sans-serif;
+  background-color: #1a1a1a; /* Warna latar sedikit abu-abu untuk kontras */
+  color: #f7f8fc;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding-top: 75px; /* Ruang untuk header fixed */
+  }
+  
+  .message.user {
+  align-self: flex-end;
+  border-bottom-right-radius: 3px;
+  background: linear-gradient(135deg, #7850d4 0%, #fbc2eb 100%);
+  color: #2d2d2d;
+  box-shadow: 0 4px 15px -2px rgba(161, 140, 209, 0.3);
+  }
+  
+  /* Header Utama */
+  .main-header {
+    background-color: #000000;
+    padding: 15px 30px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1002;
+  }
+  
+  .ai-disclaimer {
+   position: fixed; /* Tetap di posisi yang sama saat di-scroll */
+   bottom: 0;
+   left: 0;
+   width: 100%;
+   background-color: #2e2e2e; /* Warna latar belakang yang lembut */
+   border-top: 1px solid #545454; /* Garis tipis sebagai pemisah */
+   padding: 10px 20px;
+   box-sizing: border-box; /* Padding tidak menambah lebar total */
+   display: flex; /* Menggunakan flexbox untuk alignment */
+   justify-content: center; /* Teks dan ikon di tengah horizontal */
+   align-items: center; /* Teks dan ikon di tengah vertikal */
+   gap: 8px; /* Jarak antara ikon dan teks */
+   color: #ffffff; /* Warna teks yang tidak terlalu mencolok */
+   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+   font-size: 13px; /* Ukuran font yang pas untuk teks sekunder */
+   text-align: center;
+   z-index: 1000; /* Memastikan disclaimer selalu di atas konten lain */
+   /* Transisi untuk efek halus jika ada perubahan */
+   transition: background-color 0.3s ease;
+  }
+  
+  /* Area Input yang Profesional (DENGAN PERUBAHAN) */
+.input-area {
+  /* Pengaturan Posisi Fixed */
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+
+  /* Menyesuaikan lebar agar sama dengan container utama */
+  max-width: 850px;
+  width: calc(100% - 2rem); /* Lebar responsif dengan padding */
+
+  /* Gaya Asli */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: #3a3a3a;
+  border-radius: 30px;
+  box-shadow: 0 5px 25px -5px rgba(0, 0, 0, 0.1);
+  border: 2px dashed #4d4d4d;
+}
+
+.input-area input {
+  flex-grow: 1;
+  font-size: 1rem;
+  font-family: 'Inter', sans-serif;
+  border: none;
+  background: transparent;
+  padding: 0.5rem;
+  color: #ffffff;
+}
+  
+  .chatbot-options button {
+    background-color: rgba(70,70,70,0.85); /* Latar semi-transparan, konsisten dengan header */
+    backdrop-filter: blur(8px); /* Efek glassmorphism yang halus */
+    -webkit-backdrop-filter: blur(8px);
+    
+    color: #1a73e8; /* Warna teks utama yang konsisten */
+    border: 2px dotted #4b4b4b; /* Border tipis untuk definisi */
+    padding: 10px 18px; /* Padding sedikit lebih besar untuk area sentuh yang nyaman */
+    border-radius: 18px; /* Radius yang lebih modern */
+    cursor: pointer;
+    flex-shrink: 0; /* Mencegah tombol menyusut */
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap; /* Menjaga teks tetap dalam satu baris */
+    
+    display: inline-flex; /* Agar ikon dan teks sejajar dengan baik */
+    align-items: center;
+    gap: 8px; /* Jarak antara ikon dan teks */
+    
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Bayangan halus untuk efek melayang */
+    transition: all 0.25s ease-out; /* Transisi yang lebih mulus untuk semua properti */
+}
+
+.chatbot-options button:hover {
+    background-color: #404040; /* Warna latar saat hover yang lebih jelas */
+    transform: translateY(-3px) scale(1.03); /* Efek mengangkat saat hover */
+    box-shadow: 0 6px 16px rgba(51,51,51,0.15); /* Bayangan lebih kuat saat hover */
+    color: #185abc; /* Warna teks sedikit lebih gelap saat hover */
+}
+
+.chatbot-options button:active {
+    transform: translateY(-1px) scale(1); /* Efek menekan */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Kembali ke bayangan semula */
+}
+  
+  /* Kotak Versi - Ditingkatkan */
+.versi-box {
+  background: #363636;
+  border-radius: 15px;
+  padding: 8px 15px;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #868686;
+}
+
+.versi-lordicon {
+  width: 20px;
+  height: 20px;
+}
+
 }
