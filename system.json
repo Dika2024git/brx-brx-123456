@@ -1,7 +1,7 @@
 {
-  "maintenance_mode": true,
+  "maintenance_mode": false,
   "maintenance_message": "Maaf, BroRAX sedang istirahat sejenak untuk upgrade. Kami akan kembali lebih kencang dan pintar. Terima kasih atas kesabaran Anda!",
-  "allow_access_key": "bypass-brorax-2025",
+  "allow_access_key": "bypass-brorax-admin321",
   "api_enabled": true,
   "api_offline_message": "Aduh, sepertinya server saya lagi ngambek nih. Ini mungkin cuma masalah sementara, coba beberapa saat lagi ya!"
 }

@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   // URL untuk avatar bot. Ganti dengan URL gambar avatar Anda.
-const botAvatarUrl = './favicon-32x32.png';
+const botAvatarUrl = './web-app-manifest-512x512.png';
 
 let systemConfig = {}; // Variabel global untuk menyimpan konfigurasi
 
@@ -873,7 +873,6 @@ function showBotOfflineMessage(message, originalQuery) {
 
     const offlineMessageHTML = `
       <div class="offline-notice">
-          <div class="offline-icon"><i class="fas fa-plug-circle-xmark"></i></div>
           <div class="offline-text">
               <strong>Koneksi Bermasalah</strong>
               <p>${message || 'Maaf, terjadi kendala teknis.'}</p>
@@ -903,7 +902,7 @@ function showBotOfflineMessage(message, originalQuery) {
       
       // --- PERUBAHAN: Menambahkan avatar dan struktur bubble ---
       msgWrapper.innerHTML = `
-          <img src="${botAvatarUrl}" class="bot-avatar" alt="BroRAX Avatar" />
+          <img src="${botAvatarUrl}" class="bot-avatar" alt="BroRAX Avatar"></img>
           <div class="message-bubble">
             <div class="message-text image-container">
                 <div class="image-loader"></div>
@@ -1006,7 +1005,7 @@ function showBotOfflineMessage(message, originalQuery) {
         btn.stopListener = null;
     }
     btn.addEventListener("click", handleSendMessage);
-    btn.innerHTML = '<span class="material-symbols-outlined">send</span>';
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>';
     btn.title = 'Kirim';
     btn.disabled = !input.value.trim();
   }
