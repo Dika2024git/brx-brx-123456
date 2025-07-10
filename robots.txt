@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+Sitemap: https://brorax-alphatest.biz.id/sitemap.xml
