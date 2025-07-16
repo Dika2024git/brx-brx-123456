@@ -2,28 +2,260 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
         
 @font-face {
-      font-family: 'MyCustomFont';
+      font-family: 'wawa';
       src: url('History_of_Wawa.ttf') format('truetype');
       font-weight: normal;
       font-style: normal;
 }
+
+@font-face {
+      font-family: 'jembertff';
+      src: url('Jember_Sketch.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+}
     
-/* Reset dan Pengaturan Dasar Global */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
-body {
+/* html dan body digabung */
+html, body {
   height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
   font-family: 'Inter', 'Poppins', sans-serif;
   background-color: #f7f8fc; /* Warna latar sedikit abu-abu untuk kontras */
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' version='1.1' xmlns:xlink='http://www.w3.org/1999/xlink' xmlns:svgjs='http://svgjs.dev/svgjs' width='1440' height='560' preserveAspectRatio='none' viewBox='0 0 1440 560'%3e%3cg mask='url(%26quot%3b%23SvgjsMask1004%26quot%3b)' fill='none'%3e%3crect width='1440' height='560' x='0' y='0' fill='rgba(0%2c 136%2c 255%2c 0.11)'%3e%3c/rect%3e%3cpath d='M0%2c635.309C116.107%2c620.962%2c204.238%2c533.617%2c297.782%2c463.358C384.613%2c398.141%2c476.446%2c336.845%2c526.021%2c240.226C576.893%2c141.079%2c592.438%2c27.39%2c578.182%2c-83.13C563.793%2c-194.681%2c523.743%2c-305.252%2c445.266%2c-385.825C368.857%2c-464.274%2c256.469%2c-485.049%2c152.683%2c-519.989C44.467%2c-556.42%2c-64.172%2c-623.694%2c-174.559%2c-594.492C-285.512%2c-565.141%2c-351.683%2c-456.52%2c-424.032%2c-367.426C-494.206%2c-281.01%2c-567.677%2c-193.964%2c-588.597%2c-84.627C-610.035%2c27.417%2c-582.309%2c140.78%2c-541.664%2c247.37C-498.869%2c359.599%2c-446.807%2c473.361%2c-349.157%2c543.298C-249.283%2c614.828%2c-121.92%2c650.374%2c0%2c635.309' fill='rgba(0%2c 88%2c 166%2c 0.11)'%3e%3c/path%3e%3cpath d='M1440 1100.295C1544.518 1108.4569999999999 1643.7069999999999 1069.094 1738.7730000000001 1024.9 1846.326 974.9010000000001 1965.615 929.663 2026.2820000000002 827.746 2089.073 722.261 2092.89 589.995 2069.373 469.51 2046.5140000000001 352.398 1990.308 238.289 1896.769 164.207 1809.575 95.14999999999998 1687.016 113.541 1580.3029999999999 82.173 1473.547 50.793000000000006 1380.835-24.759000000000015 1269.659-20.128000000000043 1142.966-14.850999999999999 1000.558 11.504999999999995 920.285 109.66500000000002 840.204 207.58999999999997 878.613 351.50800000000004 863.078 477.051 847.912 599.612 765.841 733.0699999999999 830.094 838.5350000000001 895.262 945.5 1054.681 931.0699999999999 1169.781 980.469 1262.198 1020.133 1339.736 1092.466 1440 1100.295' fill='rgba(89%2c 178%2c 255%2c 0.11)'%3e%3c/path%3e%3c/g%3e%3cdefs%3e%3cmask id='SvgjsMask1004'%3e%3crect width='1440' height='560' fill='white'%3e%3c/rect%3e%3c/mask%3e%3c/defs%3e%3c/svg%3e");
-  color: #1a1a1a;
   display: flex;
   flex-direction: column;
-  padding-top: 75px; /* Ruang untuk header fixed */
+  padding-top: 50px; /* Ruang untuk header fixed */
+  color: #1a1a1a;
+}
+
+/* Konten Utama */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-width: 850px;
+  width: 100%;
+  margin: 0 auto;
+  /* Padding bawah ditingkatkan dari 6rem menjadi 12rem untuk memastikan
+     pesan terakhir tidak tertutup oleh area input dan tombol opsi */
+  padding: 0 10px 200px 10px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Styling untuk Tombol Upload di Input Area */
+.chat-control-btn {
+    background: none;
+    border: none;
+    color: #666666; /* Warna abu-abu sekunder */
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.chat-control-btn:hover {
+    background-color: #f1f1f1; /* Abu-abu sangat terang */
+    color: #007bff; /* Biru aksen */
+}
+
+/* Styling untuk Modal Upload */
+.upload-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.upload-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.upload-modal-content {
+    background-color: #ffffff; /* Putih */
+    padding: 25px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 480px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.upload-modal-overlay.show .upload-modal-content {
+    transform: scale(1);
+}
+
+.upload-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #666666; /* Abu-abu sekunder */
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.upload-modal-close:hover {
+    color: #333333; /* Abu-abu tua */
+}
+
+/* Zona Drag & Drop */
+.drag-drop-zone {
+    border: 2px dashed #dddddd; /* Abu-abu border */
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    background-color: #f9f9f9; /* Abu-abu sangat terang */
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.drag-drop-zone.active {
+    background-color: rgba(0, 123, 255, 0.1); /* Biru aksen transparan */
+    border-color: #007bff; /* Biru aksen */
+}
+
+.drag-drop-content .material-symbols-outlined {
+    font-size: 48px;
+    color: #007bff; /* Biru aksen */
+}
+
+.drag-drop-content p {
+    margin: 8px 0;
+    color: #666666; /* Abu-abu sekunder */
+}
+
+.upload-modal-info {
+    text-align: center;
+    font-size: 0.8em;
+    color: #666666; /* Abu-abu sekunder */
+    margin-top: 15px;
+}
+
+/* Tampilan Pratinjau */
+.image-crop-wrapper {
+    width: 100%;
+    height: 250px;
+    background-color: #000;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+#imageToCrop {
+    display: block;
+    max-width: 100%;
+}
+
+.image-tools {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.image-tools button {
+    background-color: #f1f1f1; /* Abu-abu hover */
+    border: none;
+    color: #333333; /* Teks utama */
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Pratinjau File */
+#filePreviewContainer {
+    text-align: center;
+    padding: 20px;
+}
+
+.file-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.file-info #fileIcon {
+    font-size: 64px;
+    color: #007bff; /* Biru aksen */
+}
+#fileName { font-weight: bold; }
+
+#fileCaption {
+    width: 100%;
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #dddddd; /* Abu-abu border */
+    background-color: #f9f9f9; /* Abu-abu sangat terang */
+    resize: none;
+    color: #333333;
+}
+
+/* Progress Bar */
+.progress-container {
+    width: 100%;
+    background-color: #f1f1f1; /* Abu-abu hover */
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 15px 0;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 10px;
+    background-color: #007bff; /* Biru aksen */
+    transition: width 0.3s ease;
+}
+
+/* Tombol Aksi */
+.upload-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-primary {
+    background-color: #007bff; /* Biru aksen */
+    color: white;
+}
+.btn-secondary {
+    background-color: #e9ecef; /* Abu-abu tombol sekunder */
+    color: #333333; /* Teks utama */
 }
 
 /* ======================================================= */
@@ -155,22 +387,6 @@ body {
     .fitur-icon { width: 38px; height: 38px; font-size: 1rem; }
 }
 
-/* Konten Utama */
-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  max-width: 850px;
-  width: 100%;
-  margin: 0 auto;
-  /* PERUBAHAN DI SINI:
-    Padding bawah ditingkatkan dari 6rem menjadi 12rem untuk memastikan
-    pesan terakhir tidak tertutup oleh area input dan tombol opsi.
-  */
-  padding: 0 1rem 12rem 1rem;
-}
-
 /* Header Utama */
 .main-header {
     background-color: #ffffff;
@@ -188,7 +404,7 @@ main {
 }
 
 .header-title {
-    font-family: 'MyCustomFont', sans-serif;
+    font-family: 'wawa', sans-serif;
     font-size: 20px;
     font-weight: bold;
     /*margin-left: 20px;*/
@@ -203,25 +419,6 @@ main {
   font-size: 15px;
   font-weight: 500;
   text-align: center;
-}
-
-/* Kotak Chat */
-/* Kustomisasi Scrollbar untuk Tampilan Bersih */
-.chat-box::-webkit-scrollbar {
-    width: 8px;
-}
-
-.chat-box::-webkit-scrollbar-thumb {
-    background: #cdd2d9;
-    border-radius: 10px;
-}
-
-.chat-box::-webkit-scrollbar-thumb:hover {
-    background: #b0b8c4;
-}
-
-.chat-box::-webkit-scrollbar-track {
-  background: linear-gradient(white 0%, white 50%, transparent 50%);
 }
 
 /* Kotak Chat */
@@ -294,6 +491,8 @@ main {
 
 /* Kontainer untuk teks pesan */
 .message-text {
+    font-family: 'wawa', sans-serif;
+    color: black;
     max-width: 100%;
     word-wrap: break-word;
 }
@@ -1200,6 +1399,10 @@ flex-shrink: 0; /* Mencegah ikon menyusut */
   font-size: 0.9rem;
   color: white;
   font-weight: 500;
+}
+
+.message-text {
+  color: white;
 }
 
 }

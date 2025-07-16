@@ -1252,74 +1252,264 @@ if (scrollToBottomBtn) {
     tombolMengerti.addEventListener('click', sembunyikanOverlay);
     
     /**
- * VERSI FINAL (Diperbaiki & Disederhanakan)
- * Menyediakan gambar, teks, dan URL secara terpisah ke API Share.
+ * VERSI FLAGSHIP: Kustomisasi Cerdas, Opsi Salin & Animasi Profesional
+ * Menampilkan modal canggih dengan pratinjau yang diperbarui secara cerdas (debounce), 
+ * opsi untuk 'Salin' atau 'Bagikan', dan animasi UI yang halus.
  * @param {HTMLElement} messageWrapper - Elemen pembungkus pesan bot yang dipilih.
  */
 async function handleShareChat(messageWrapper) {
     const shareButton = messageWrapper.querySelector('.share-icon');
     const originalButtonIcon = shareButton.className;
     let tempContainer = null;
+    let modalElement = null;
+    let lastGeneratedBlob = null;
+    let isRendering = false;
+
+    // --- Utility Function untuk Debounce ---
+    const debounce = (func, delay = 300) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    };
+
+    // Aset dan Konfigurasi Awal
+    const logoUrl = './web-app-manifest-512x512.png';
+    const initialOptions = {
+        theme: 'auto',
+        title: 'Percakapan dengan BroRAX',
+        showQR: true,
+        showFooter: true,
+    };
+
+    /**
+     * Fungsi inti untuk me-render canvas berdasarkan opsi.
+     */
+    async function renderImage(options) {
+        isRendering = true;
+        const userMessageElement = messageWrapper.previousElementSibling;
+        if (!userMessageElement) throw new Error("Pesan pengguna tidak ditemukan.");
+
+        const isDarkMode = options.theme === 'auto' ? 
+                           window.matchMedia('(prefers-color-scheme: dark)').matches : 
+                           options.theme === 'dark';
+        
+        const themeColors = {
+            bg: isDarkMode ? '#1E1F22' : '#FFFFFF',
+            text: isDarkMode ? '#E1E1E2' : '#202124',
+            muted: isDarkMode ? '#8E9195' : '#5F6368',
+            border: isDarkMode ? '#444746' : '#E0E0E0',
+        };
+
+        if (tempContainer) tempContainer.remove();
+        tempContainer = document.createElement('div');
+        Object.assign(tempContainer.style, {
+            position: 'absolute', left: '-9999px',
+            width: (chatBox.clientWidth > 500 ? 500 : chatBox.clientWidth) + 'px',
+            padding: '24px', border: `1px solid ${themeColors.border}`,
+            borderRadius: '16px', backgroundColor: themeColors.bg,
+            fontFamily: `'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif`,
+            transition: 'background-color 0.3s'
+        });
+
+        const header = `<div style="display: flex; align-items: center; padding-bottom: 15px; border-bottom: 1px solid ${themeColors.border};">
+            <img src="${logoUrl}" alt="Logo" style="width: 30px; height: 30px; margin-right: 12px; border-radius: 6px;">
+            <input type="text" id="share-title-input" value="${options.title}" style="font-size: 16px; font-weight: 600; color: ${themeColors.text}; background: transparent; border: none; outline: none; width: 100%;">
+        </div>`;
+
+        const userClone = userMessageElement.cloneNode(true);
+        const botClone = messageWrapper.cloneNode(true);
+        userClone.querySelector('.message-meta')?.remove();
+        botClone.querySelector('.message-meta')?.remove();
+        
+        const qrCodeHtml = options.showQR ? `<div style="text-align: center; flex-shrink: 0; margin-left: 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: ${themeColors.text}; font-weight: 500;">Scan untuk Coba</p>
+            <div style="padding: 5px; border-radius: 8px; background-color: white;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(window.location.href)}&qzone=1" alt="QR Code" style="display: block;">
+            </div>
+        </div>` : '';
+
+        const content = `<div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 0;">
+            <div style="flex-grow: 1;">${userClone.outerHTML}${botClone.outerHTML}</div>
+            ${qrCodeHtml}
+        </div>`;
+        
+        const footer = options.showFooter ? `<div style="padding-top: 10px; text-align: center; font-size: 12px; color: ${themeColors.muted};">
+            Dibuat dengan BroRAX AI &bull; ${new Date().toLocaleDateString('id-ID')}
+        </div>` : '';
+
+        tempContainer.innerHTML = header + content + footer;
+        document.body.appendChild(tempContainer);
+        
+        const canvas = await html2canvas(tempContainer, { 
+            useCORS: true, scale: 2, backgroundColor: null 
+        });
+        
+        isRendering = false;
+        return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    }
+
+    /**
+     * Membuat dan menampilkan modal pratinjau.
+     */
+    function showPreviewModal() {
+        if (modalElement) modalElement.remove();
+        
+        modalElement = document.createElement('div');
+        modalElement.id = 'share-preview-modal';
+        modalElement.innerHTML = `
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Pratinjau & Bagikan</h3>
+                    <button class="modal-close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-area">
+                        <img id="preview-image" src="" alt="Pratinjau Gambar">
+                        <div class="loader-overlay"><div class="spinner"></div><span>Membuat pratinjau...</span></div>
+                    </div>
+                    <div class="controls-area">
+                        <h4>Opsi Tampilan</h4>
+                        <div class="control-group">
+                            <label>Tema Warna</label>
+                            <div class="theme-buttons">
+                                <button data-theme="auto" class="active">Otomatis</button>
+                                <button data-theme="light">Terang</button>
+                                <button data-theme="dark">Gelap</button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Pengaturan Elemen</label>
+                            <div class="toggle-group">
+                                <label><input type="checkbox" data-option="showQR" checked> Tampilkan QR Code</label>
+                                <label><input type="checkbox" data-option="showFooter" checked> Tampilkan Footer</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-action-btn" id="copy-image-btn"><i class="far fa-copy"></i> Salin</button>
+                    <button class="modal-action-btn primary" id="share-now-btn"><i class="fas fa-share-alt"></i> Bagikan</button>
+                </div>
+            </div>
+            <style>
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes scaleUp { from { transform: translate(-50%, -50%) scale(0.95); } to { transform: translate(-50%, -50%) scale(1); } }
+                @keyframes spin { to { transform: rotate(360deg); } }
+                #share-preview-modal .modal-overlay { animation: fadeIn 0.3s ease-out; /* ... gaya lain sama ... */ }
+                #share-preview-modal .modal-content { animation: fadeIn 0.3s ease-out, scaleUp 0.3s ease-out; /* ... gaya lain sama ... */ }
+                #share-preview-modal .modal-footer { display: flex; justify-content: flex-end; gap: 12px; /* ... gaya lain sama ... */ }
+                #share-preview-modal .modal-action-btn { display: flex; align-items: center; gap: 8px; font-size: 15px; background: #555; /* ... gaya lain sama ... */ }
+                #share-preview-modal .modal-action-btn.primary { background: #0a84ff; /* ... gaya lain sama ... */ }
+                #share-preview-modal .loader-overlay .spinner { width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; }
+                /* ... semua gaya lain dari versi sebelumnya tetap sama ... */
+                #share-preview-modal .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 999998; }
+                #share-preview-modal .modal-content { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2c2c2e; color: white; border-radius: 12px; width: 90%; max-width: 600px; z-index: 999999; box-shadow: 0 5px 25px rgba(0,0,0,0.4); display: flex; flex-direction: column; max-height: 90vh; }
+                #share-preview-modal .modal-header { padding: 15px 20px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+                #share-preview-modal .modal-header h3 { margin: 0; font-size: 18px; }
+                #share-preview-modal .modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
+                #share-preview-modal .preview-area { position: relative; margin-bottom: 20px; background: #222; border-radius: 8px; padding: 10px; }
+                #share-preview-modal #preview-image { width: 100%; height: auto; border-radius: 8px; transition: opacity 0.2s; }
+                #share-preview-modal .loader-overlay { position: absolute; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); color: white; display: none; justify-content: center; align-items: center; border-radius: 8px; flex-direction: row; }
+                #share-preview-modal .controls-area { display: flex; flex-direction: column; gap: 15px; }
+                #share-preview-modal .control-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+                #share-preview-modal .theme-buttons { display: flex; gap: 10px; }
+                #share-preview-modal .theme-buttons button { background: #555; border: 1px solid #777; color: white; padding: 8px 15px; border-radius: 6px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+                #share-preview-modal .theme-buttons button.active { background: #0a84ff; border-color: #0a84ff; font-weight: bold; }
+                #share-preview-modal .toggle-group { display: flex; gap: 20px; }
+                #share-preview-modal .toggle-group label { display: flex; align-items: center; gap: 8px; }
+                #share-preview-modal .modal-footer { padding: 15px 20px; border-top: 1px solid #444; flex-shrink: 0; }
+                #share-preview-modal .modal-close-btn { background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer; }
+                #share-preview-modal .modal-action-btn { border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background-color 0.2s; }
+            </style>
+        `;
+        document.body.appendChild(modalElement);
+        
+        const closeModal = () => {
+            modalElement.style.animation = 'fadeOut 0.2s ease-in';
+            setTimeout(() => modalElement.remove(), 200);
+        };
+        
+        const updatePreview = async () => {
+            if (isRendering) return;
+            modalElement.querySelector('.loader-overlay').style.display = 'flex';
+            const titleInput = tempContainer?.querySelector('#share-title-input');
+            if (titleInput) initialOptions.title = titleInput.value;
+
+            const newBlob = await renderImage(initialOptions);
+            lastGeneratedBlob = newBlob;
+            modalElement.querySelector('#preview-image').src = URL.createObjectURL(newBlob);
+            modalElement.querySelector('.loader-overlay').style.display = 'none';
+        };
+        
+        const debouncedTitleUpdate = debounce(updatePreview, 400);
+
+        // --- Event Listeners ---
+        modalElement.querySelector('.modal-overlay').onclick = closeModal;
+        modalElement.querySelector('.modal-close-btn').onclick = closeModal;
+        
+        modalElement.querySelectorAll('.theme-buttons button, .toggle-group input').forEach(el => {
+            el.onchange = el.onclick = () => {
+                if(el.matches('button')){
+                  modalElement.querySelector('.theme-buttons button.active').classList.remove('active');
+                  el.classList.add('active');
+                  initialOptions.theme = el.dataset.theme;
+                } else {
+                  initialOptions[el.dataset.option] = el.checked;
+                }
+                updatePreview();
+            };
+        });
+
+        document.body.addEventListener('input', (e) => {
+            if (e.target.id === 'share-title-input') {
+                initialOptions.title = e.target.value;
+                debouncedTitleUpdate();
+            }
+        });
+
+        document.getElementById('copy-image-btn').onclick = async (e) => {
+            if (!lastGeneratedBlob || !navigator.clipboard?.write) return;
+            try {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': lastGeneratedBlob })]);
+                const btn = e.currentTarget;
+                btn.innerHTML = '<i class="fas fa-check"></i> Tersalin!';
+                setTimeout(() => { btn.innerHTML = '<i class="far fa-copy"></i> Salin'; }, 2000);
+            } catch (err) {
+                alert('Gagal menyalin gambar.');
+                console.error('Clipboard write error:', err);
+            }
+        };
+
+        document.getElementById('share-now-btn').onclick = async () => {
+            if (!lastGeneratedBlob) return;
+            const imageFile = new File([lastGeneratedBlob], `percakapan-brorax-${Date.now()}.png`, { type: 'image/png' });
+            try {
+                await navigator.share({
+                    files: [imageFile],
+                    title: 'Obrolan Keren dengan BroRAX AI',
+                    text: `Penasaran sama AI yang bisa diajak ngobrol santai? Cek hasil percakapanku dengan BroRAX ini! 🤖`
+                });
+            } catch (err) {
+                if(err.name !== 'AbortError') console.error("Error sharing:", err);
+            } finally {
+                closeModal();
+            }
+        };
+
+        updatePreview();
+    }
 
     try {
-        // --- Setup untuk membuat screenshot dari 2 pesan ---
-        const userMessageElement = messageWrapper.previousElementSibling;
-        if (!userMessageElement || !userMessageElement.classList.contains('user')) {
-            alert("Pesan asli pengguna tidak ditemukan untuk dibagikan.");
-            return;
-        }
-        tempContainer = document.createElement('div');
-        tempContainer.style.position = 'absolute';
-        tempContainer.style.left = '-9999px';
-        tempContainer.style.width = chatBox.clientWidth + 'px';
-        tempContainer.style.padding = '20px';
-        tempContainer.style.backgroundColor = 'var(--bg-color)';
-        tempContainer.appendChild(userMessageElement.cloneNode(true));
-        tempContainer.appendChild(messageWrapper.cloneNode(true));
-        document.body.appendChild(tempContainer);
-
-        // Tampilkan loading & nonaktifkan tombol sementara
         shareButton.className = 'fas fa-spinner fa-spin';
-        shareButton.style.pointerEvents = 'none';
-
-        // Buat file gambar dari wadah sementara
-        const canvas = await html2canvas(tempContainer, { useCORS: true, scale: 2 });
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-        const imageFile = new File([blob], 'percakapan-bersama-brorax.png', { type: 'image/png' });
-
-        // --- Data Share yang Sudah Diperbaiki dan Dipisah ---
-        const userMessageText = userMessageElement.querySelector('.message-text')?.innerText || "Pengguna";
-        const botMessageText = messageWrapper.querySelector('.message-text').innerText;
-        
-        const shareData = {
-            files: [imageFile],
-            title: 'Percakapan Keren bareng BroRAX',
-            text: `Obrolan seru bareng BroRAX:\n\nAnda: ${userMessageText}\nBroRAX: ${botMessageText}`,
-            url: window.location.href // LINK DIPISAHKAN
-        };
-        // ----------------------------------------------------
-
-        // Cek apakah browser bisa share file, lalu jalankan
-        if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
-            await navigator.share(shareData);
-        } else {
-            // Fallback jika browser tidak mendukung share file sama sekali
-            alert("Browser ini tidak mendukung fitur berbagi file.");
-        }
-
+        showPreviewModal();
     } catch (err) {
-        // Jangan tampilkan error jika pengguna hanya menekan tombol "cancel"
-        if (err.name !== 'AbortError') {
-            console.error("Terjadi error saat mencoba berbagi:", err);
-            alert("Waduh, ada kendala saat mencoba berbagi.");
-        }
+        console.error("Gagal memulai proses berbagi:", err);
+        alert("Waduh, sepertinya ada kendala saat menyiapkan pratinjau.");
     } finally {
-        // Kembalikan tombol ke kondisi normal dan hapus elemen sementara
         shareButton.className = originalButtonIcon;
-        shareButton.style.pointerEvents = 'auto';
-        if (tempContainer) {
-            document.body.removeChild(tempContainer);
-        }
     }
 }
 
@@ -1888,4 +2078,287 @@ if (SpeechRecognition) {
   micBtn.style.display = 'none';
   console.log("Speech Recognition tidak didukung oleh browser ini.");
 }
+
+// --- KODE BARU: FITUR UPLOAD FILE DAN GAMBAR (VERSI CANGGIH) ---
+
+const uploadBtn = document.getElementById('uploadBtn');
+const uploadModal = document.getElementById('uploadModal');
+const closeUploadModalBtn = document.getElementById('closeUploadModal');
+const dragDropZone = document.getElementById('dragDropZone');
+const selectFileBtn = document.getElementById('selectFileBtn');
+const fileInput = document.getElementById('fileInput');
+
+const initialView = document.getElementById('uploadInitialView');
+const previewView = document.getElementById('uploadPreviewView');
+
+const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+const imageToCrop = document.getElementById('imageToCrop');
+const filePreviewContainer = document.getElementById('filePreviewContainer');
+const fileIcon = document.getElementById('fileIcon');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+
+const cropBtn = document.getElementById('cropBtn');
+const resetCropBtn = document.getElementById('resetCropBtn');
+const fileCaption = document.getElementById('fileCaption');
+const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+const sendUploadBtn = document.getElementById('sendUploadBtn');
+const progressContainer = document.getElementById('uploadProgressContainer');
+const progressBar = document.getElementById('uploadProgressBar');
+
+let cropper = null;
+let currentFile = null;
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // Naikkan batas jadi 15MB
+
+// --- Fungsi untuk membuka & menutup modal ---
+const openUploadModal = () => uploadModal.classList.add('show');
+const closeUploadModal = () => {
+    uploadModal.classList.remove('show');
+    // Reset modal ke keadaan awal setelah ditutup
+    setTimeout(() => {
+        initialView.hidden = false;
+        previewView.hidden = true;
+        imagePreviewContainer.hidden = true;
+        filePreviewContainer.hidden = true;
+        progressContainer.hidden = true;
+        progressBar.style.width = '0%';
+        fileCaption.value = '';
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        currentFile = null;
+        fileInput.value = ''; // Reset input file
+        // Aktifkan kembali tombol setelah reset
+        sendUploadBtn.disabled = false;
+        cancelUploadBtn.disabled = false;
+    }, 300);
+};
+
+// --- Fungsi untuk menangani file yang dipilih ---
+const handleFile = (file) => {
+    if (!file) return;
+
+    // Validasi ukuran
+    if (file.size > MAX_FILE_SIZE) {
+        alert(`Ukuran file terlalu besar. Maksimal ${(MAX_FILE_SIZE / 1024 / 1024)}MB.`);
+        return;
+    }
+
+    currentFile = file;
+    initialView.hidden = true;
+    previewView.hidden = false;
+
+    // Cek apakah file adalah gambar yang dapat ditampilkan
+    if (file.type.startsWith('image/') && ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+        imagePreviewContainer.hidden = false;
+        filePreviewContainer.hidden = true;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imageToCrop.src = e.target.result;
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(imageToCrop, {
+                aspectRatio: 16 / 9,
+                viewMode: 1,
+                autoCropArea: 0.9,
+                responsive: true,
+                background: false
+            });
+        };
+        reader.readAsDataURL(file);
+    } else {
+        // Handle untuk file non-gambar atau gambar yang tidak didukung cropper (contoh: svg)
+        imagePreviewContainer.hidden = true;
+        filePreviewContainer.hidden = false;
+        fileName.textContent = file.name;
+        fileSize.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+        fileIcon.textContent = getFileIcon(file.type, file.name);
+    }
+};
+
+const getFileIcon = (fileType, fileName) => {
+    const extension = fileName.split('.').pop().toLowerCase();
+    if (fileType.includes('pdf')) return 'picture_as_pdf';
+    if (fileType.includes('word') || ['doc', 'docx'].includes(extension)) return 'description';
+    if (fileType.includes('excel') || fileType.includes('spreadsheet') || ['xls', 'xlsx'].includes(extension)) return 'analytics';
+    if (fileType.includes('presentation') || ['ppt', 'pptx'].includes(extension)) return 'slideshow';
+    if (fileType.includes('zip') || fileType.includes('rar') || ['zip', 'rar', '7z'].includes(extension)) return 'folder_zip';
+    if (fileType.startsWith('video/')) return 'videocam';
+    if (fileType.startsWith('audio/')) return 'audiotrack';
+    if (fileType.startsWith('image/')) return 'image';
+    return 'attach_file'; // Ikon default
+};
+
+/**
+ * Fungsi pembungkus (wrapper) untuk XMLHttpRequest yang mengembalikan Promise.
+ * Mengelola upload dan melaporkan progres.
+ * @param {string} endpoint - URL tujuan upload.
+ * @param {FormData} formData - Data yang akan di-upload.
+ * @returns {Promise<string>} - Promise yang resolve dengan responseText atau reject dengan error.
+ */
+const attemptUpload = (endpoint, formData) => {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', endpoint, true);
+
+        // Lacak progres upload
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                progressBar.style.width = `${percentComplete}%`;
+            }
+        };
+
+        // Handle saat upload selesai
+        xhr.onload = () => {
+            // Jika status sukses (2xx), resolve promise
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(xhr.responseText);
+            } else {
+                // Jika server merespons dengan error, reject promise
+                reject(new Error(`Server merespons dengan status: ${xhr.status}`));
+            }
+        };
+
+        // Handle error jaringan
+        xhr.onerror = () => {
+            reject(new Error('Terjadi kesalahan jaringan. Periksa koneksi Anda.'));
+        };
+
+        xhr.send(formData);
+    });
+};
+
+// --- Fungsi utama untuk upload file dengan logika fallback ---
+const uploadFile = async () => {
+    if (!currentFile) return;
+
+    sendUploadBtn.disabled = true;
+    cancelUploadBtn.disabled = true;
+    progressContainer.hidden = false;
+    progressBar.style.width = '0%';
+
+    const isDisplayableImage = currentFile.type.startsWith('image/') && cropper;
+    const primaryEndpoint = isDisplayableImage ? '/gambar' : '/file';
+    const fallbackEndpoint = '/tes';
+    let fileToSend = currentFile;
+
+    try {
+        // Proses gambar (crop & kompresi) jika memungkinkan
+        if (isDisplayableImage) {
+            const canvas = cropper.getCroppedCanvas({ maxWidth: 1920, maxHeight: 1080 });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+            const compressedFile = await imageCompression(blob, {
+                maxSizeMB: 2,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+            });
+            fileToSend = new File([compressedFile], currentFile.name, { type: 'image/jpeg' });
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileToSend);
+        formData.append('caption', fileCaption.value);
+
+        try {
+            // --- Percobaan Pertama: Kirim ke endpoint utama ---
+            console.log(`Mencoba mengunggah ke endpoint utama: ${primaryEndpoint}`);
+            const responseText = await attemptUpload(primaryEndpoint, formData);
+            const response = JSON.parse(responseText);
+            appendFileMessageToChat(response.fileUrl, isDisplayableImage, fileCaption.value, currentFile.name);
+            alert('File berhasil diunggah!');
+
+        } catch (error) {
+            // --- Percobaan Kedua (Fallback): Jika percobaan pertama gagal ---
+            console.warn(`Upload ke endpoint utama gagal: ${error.message}. Mencoba fallback...`);
+            alert("Koneksi ke server utama gagal. Mencoba koneksi alternatif...");
+
+            // Reset progress bar untuk percobaan kedua
+            progressBar.style.width = '0%';
+            
+            console.log(`Mencoba mengunggah ke endpoint fallback: ${fallbackEndpoint}`);
+            const fallbackResponseText = await attemptUpload(fallbackEndpoint, formData);
+            const fallbackResponse = JSON.parse(fallbackResponseText);
+            appendFileMessageToChat(fallbackResponse.fileUrl, isDisplayableImage, fileCaption.value, currentFile.name);
+            alert('File berhasil diunggah melalui koneksi alternatif!');
+        }
+        
+        // Jika salah satu percobaan berhasil, tutup modal
+        closeUploadModal();
+
+    } catch (finalError) {
+        // --- Jika kedua percobaan gagal ---
+        console.error('Semua percobaan upload gagal:', finalError);
+        alert(`Gagal total mengunggah file: ${finalError.message}. Silakan coba lagi nanti.`);
+        // Aktifkan kembali tombol jika terjadi kegagalan total
+        sendUploadBtn.disabled = false;
+        cancelUploadBtn.disabled = false;
+    }
+};
+
+// --- Fungsi untuk Menambahkan Pesan File ke Chat ---
+// **PENTING**: Adaptasi fungsi ini agar sesuai dengan struktur `appendMessage` Anda.
+function appendFileMessageToChat(url, isImage, caption, originalName) {
+    const messageType = 'user'; // Anggap file yang diupload adalah pesan user
+    let messageContent;
+
+    if (isImage) {
+        messageContent = `
+            <div class="uploaded-image-container">
+                <a href="${url}" target="_blank" title="Lihat gambar penuh">
+                    <img src="${url}" alt="${caption || 'Gambar yang diunggah'}" style="max-width: 250px; border-radius: 8px; cursor: pointer;">
+                </a>
+                ${caption ? `<p class="uploaded-caption">${caption}</p>` : ''}
+            </div>
+        `;
+    } else {
+        const fileIconName = getFileIcon(currentFile.type, originalName);
+        messageContent = `
+            <div class="uploaded-file-container">
+                <a href="${url}" target="_blank" download class="file-link" title="Unduh ${originalName}">
+                    <span class="material-symbols-outlined">${fileIconName}</span>
+                    <span class="file-link-name">${originalName}</span>
+                </a>
+                ${caption ? `<p class="uploaded-caption">${caption}</p>` : ''}
+            </div>
+        `;
+    }
+
+    // Panggil fungsi append message yang sudah ada dengan konten baru.
+    // Ganti 'appendInstantMessage' jika Anda punya nama fungsi yang berbeda.
+    appendInstantMessage(messageType, messageContent);
+}
+
+// --- Event Listeners ---
+uploadBtn.addEventListener('click', openUploadModal);
+closeUploadModalBtn.addEventListener('click', closeUploadModal);
+cancelUploadBtn.addEventListener('click', closeUploadModal);
+selectFileBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+// Listener untuk drag & drop
+dragDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dragDropZone.classList.add('active');
+});
+
+dragDropZone.addEventListener('dragleave', () => {
+    dragDropZone.classList.remove('active');
+});
+
+dragDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragDropZone.classList.remove('active');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFile(files[0]);
+    }
+});
+
+// Listener untuk tombol di modal
+if(cropBtn) cropBtn.addEventListener('click', () => cropper?.crop());
+if(resetCropBtn) resetCropBtn.addEventListener('click', () => cropper?.reset());
+sendUploadBtn.addEventListener('click', uploadFile);
+
+// --- AKHIR KODE FITUR UPLOAD (VERSI CANGGIH) ---
 });

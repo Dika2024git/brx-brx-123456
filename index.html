@@ -14,25 +14,24 @@
   <!-- Open Graph -->
 <meta property="og:title" content="BroRAX - AI Chatbot Canggih, Cerdas, dan Siap Membantu Anda 24/7">
 <meta property="og:description" content="Kenali BroRAX, AI chatbot modern berbasis teknologi kecerdasan buatan generatif. Didesain untuk interaksi yang alami, cepat, dan responsif — ideal untuk bisnis, edukasi, hingga personal. Dengan tampilan futuristik dan dukungan multibahasa, BroRAX siap menjadi asisten virtual terbaik Anda.">
-<meta property="og:image" content="https://www.brorax.ai/assets/images/og-brorax.jpg">
-<meta property="og:url" content="https://www.brorax.ai/">
+<meta property="og:image" content="https://files.catbox.moe/6gpzxz.jpg">
+<meta property="og:url" content="https://brorax-alphatest.biz.id/">
 <meta property="og:type" content="website">
   
   <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="BroRAX - AI Chatbot Generatif Terdepan untuk Bisnis & Personal Anda">
 <meta name="twitter:description" content="BroRAX adalah AI chatbot modern berbasis teknologi generatif yang dirancang untuk memberikan pengalaman percakapan cerdas, cepat, dan manusiawi. Dukung interaksi 24/7 dengan tampilan futuristik dan integrasi multibahasa — solusi AI terpercaya untuk era digital.">
-<meta name="twitter:image" content="https://www.brorax.ai/assets/images/twitter-card-brorax.jpg">
+<meta name="twitter:image" content="https://files.catbox.moe/6gpzxz.jpg">
 <meta name="twitter:site" content="@BroRAX_AI">
 <meta name="twitter:creator" content="@BroRAX_AI">
   
-  <!-- Favicon & Fonts -->
-  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="shortcut icon" href="/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <meta name="apple-mobile-web-app-title" content="BroRAX" />
-  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="icon" type="image/png" href="./favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+<link rel="shortcut icon" href="./favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="BroRAX AI" />
+<link rel="manifest" href="./site.webmanifest" />
 
   <!-- CSS -->
   <link rel="stylesheet" href="style.css">
@@ -53,7 +52,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/dracula.min.css">
   
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" />
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
+    
   <meta name="google-site-verification" content="l9EEtMwTsWUF_aolTsg1x4huO1G8U1dOXkstD7XkD9s" />
 </head>
 <body>
@@ -64,15 +68,6 @@
             <button id="tombol-tutup" class="tombol-tutup" aria-label="Tutup Notifikasi">&times;</button>
             
             <div class="overlay-main-content">
-                <div class="overlay-visual">
-                    <div class="icon-bg-wrapper">
-                        <i class="fas fa-dns icon1"></i>
-                        <i class="fas fa-dns icon2"></i>
-                        <i class="fas fa-dns icon3"></i>
-                        <i class="fas fa-dns icon4"></i>
-                        <i class="fas fa-brain icon5"></i>
-                    </div>
-                </div>
 
                 <div class="overlay-text-content">
                     <header class="overlay-header">
@@ -164,8 +159,60 @@
         <i class="fas fa-arrow-down"></i>
     </button>
     
+    <div id="uploadModal" class="upload-modal-overlay">
+    <div class.="upload-modal-content">
+        <button id="closeUploadModal" class="upload-modal-close">&times;</button>
+        <div id="uploadInitialView">
+            <div id="dragDropZone" class="drag-drop-zone">
+                <div class="drag-drop-content">
+                    <span class="material-symbols-outlined">cloud_upload</span>
+                    <p><b>Seret & lepas file di sini</b></p>
+                    <p>atau</p>
+                    <button id="selectFileBtn" class="btn-primary">Pilih File</button>
+                    <input type="file" id="fileInput" hidden>
+                </div>
+            </div>
+            <p class="upload-modal-info">Maks 10MB | Semua Tipe Gambar dan File</p>
+        </div>
+        
+        <div id="uploadPreviewView" hidden>
+            <div id="imagePreviewContainer" hidden>
+                <div class="image-crop-wrapper">
+                    <img id="imageToCrop" src="" alt="Pratinjau Gambar">
+                </div>
+                 <div class="image-tools">
+                    <button id="cropBtn" title="Pangkas Gambar"><span class="material-symbols-outlined">crop</span></button>
+                    <button id="resetCropBtn" title="Reset Pangkas"><span class="material-symbols-outlined">refresh</span></button>
+                </div>
+            </div>
+
+            <div id="filePreviewContainer" hidden>
+                <div class="file-info">
+                    <span id="fileIcon" class="material-symbols-outlined"></span>
+                    <p id="fileName"></p>
+                    <small id="fileSize"></small>
+                </div>
+            </div>
+            
+            <textarea id="fileCaption" placeholder="Tambahkan keterangan (opsional)..." maxlength="200"></textarea>
+
+            <div id="uploadProgressContainer" class="progress-container" hidden>
+                <div id="uploadProgressBar" class="progress-bar"></div>
+            </div>
+
+            <div class="upload-modal-actions">
+                <button id="cancelUploadBtn" class="btn-secondary">Batal</button>
+                <button id="sendUploadBtn" class="btn-primary">Kirim</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <div class="input-area">
-      <input type="text" id="userInput" placeholder="BroRAX lagi standby. Ketik aja!" autocomplete="off">
+      <button id="uploadBtn" class="chat-control-btn" title="Lampirkan File"><span class="material-symbols-outlined">attach_file</span>
+      </button>
+
+      <input type="text" id="userInput" placeholder="Tanya aja!" autocomplete="off">
       <button id="micBtn" class="icon-btn" title="Gunakan suara">
         <span class="material-symbols-outlined">mic</span>
         </button>
