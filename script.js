@@ -757,7 +757,9 @@ if (target.matches('.copy-code-btn')) {
   // --- FUNGSI UTAMA PENGIRIMAN PESAN (SUDAH DIPERBARUI) ---
   async function handleSendMessage() {
     const text = input.value.trim();
-
+    
+    if (text) localStorage.setItem('lastUserPrompt', text);
+    
     // --- PENGECEKAN KILL SWITCH ---
     if (systemConfig && systemConfig.api_enabled === false) {
         // Tampilkan pesan offline yang diatur di JSON
@@ -845,6 +847,7 @@ if (target.matches('.copy-code-btn')) {
           showBotOfflineMessage(offlineMessage, text);
       }
   } finally {
+    localStorage.removeItem('lastUserPrompt');
       fetchController = null;
       // Hanya pulihkan tombol jika proses pengetikan tidak sedang berjalan
       if (!isTyping) {
@@ -853,6 +856,72 @@ if (target.matches('.copy-code-btn')) {
       }
   }
   }
+  
+  /**
+ * Memeriksa localStorage dan menampilkan kembali loader jika proses terputus.
+ */
+function checkAndRestoreLoader() {
+    // Cek apakah ada status 'loading' yang tersimpan
+    if (localStorage.getItem('loadingState')) {
+        console.log('🔄 Loader state terdeteksi. Menampilkan kembali loader...');
+        showLoader();
+    }
+}
+
+/**
+ * Memeriksa state saat halaman dimuat, menampilkan loader, DAN memulai ulang
+ * proses fetch yang terputus (VERSI PERBAIKAN).
+ */
+async function restoreProcessOnLoad() {
+    const isLoading = localStorage.getItem('loadingState');
+    const lastPrompt = localStorage.getItem('lastUserPrompt');
+
+    // Muat riwayat chat terlebih dahulu.
+    // Fungsi ini SUDAH menampilkan pesan terakhir Anda yang tersimpan.
+    loadChatHistory();
+
+    // Jika ada proses loading yang terputus & promptnya tersimpan
+    if (isLoading && lastPrompt) {
+        console.log('🔄 Memulai ulang proses fetch untuk prompt:', lastPrompt);
+
+        // =================================================================
+        // HAPUS BARIS INI KARENA MENYEBABKAN DUPLIKASI PESAN
+        // appendMessage("user", lastPrompt); 
+        // =================================================================
+        
+        // Langsung tampilkan loader dan jalankan kembali proses fetch
+        const loader = showLoader();
+        
+        const backendUrl = 'https://api.siputzx.my.id/api/ai/gpt3';
+        const url = new URL(backendUrl);
+        url.searchParams.append('prompt', SYSTEM_INSTRUCTION);
+        url.searchParams.append('content', lastPrompt);
+
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Gagal mengambil data setelah refresh');
+            
+            const data = await res.json();
+            const rawBotMessage = data.data || "";
+
+            loader.remove(); // Hentikan loader setelah berhasil
+            
+            if (isImageUrl(rawBotMessage)) {
+                appendImageMessage("bot", rawBotMessage);
+            } else {
+                appendMessage("bot", marked.parse(rawBotMessage));
+            }
+        } catch (error) {
+            console.error("Gagal melanjutkan proses setelah refresh:", error);
+            loader.remove();
+            appendInstantMessage('bot', 'Waduh, koneksi terputus saat memproses. Coba lagi ya.');
+        } finally {
+            restoreSendButton();
+            localStorage.removeItem('loadingState');
+            localStorage.removeItem('lastUserPrompt');
+        }
+    }
+}
   
   /**
  * Menampilkan pesan bahwa bot sedang offline/mengalami kendala teknis.
@@ -972,43 +1041,43 @@ function showBotOfflineMessage(message, originalQuery) {
   }
   
   function showStopTypingButton() {
-    // Hapus listener lama untuk menghindari tumpang tindih
+    // Logika event listener
     if (btn.stopListener) {
         btn.removeEventListener("click", btn.stopListener);
     }
     btn.removeEventListener("click", handleSendMessage);
 
-    // Definisikan listener yang sudah diperbaiki
     const stopListener = () => {
-        // Jika fetchController ada (artinya sedang loading/menunggu)
-        if (fetchController) {
-            fetchController.abort(); // HANYA panggil abort. JANGAN set ke null di sini.
-        } 
-        // Jika tidak, dan typewriter sedang berjalan
-        else if (isTyping && typewriterControl.stop) {
-            typewriterControl.stop();
-        }
+        if (fetchController) fetchController.abort();
+        else if (isTyping && typewriterControl.stop) typewriterControl.stop();
     };
 
     btn.addEventListener("click", stopListener);
-    btn.stopListener = stopListener; // Simpan referensi
+    btn.stopListener = stopListener;
 
+    // Hanya fokus pada perubahan UI
+    btn.classList.add('btn-stopping');
     btn.innerHTML = '<i class="fas fa-stop"></i>';
-    btn.title = 'Hentikan';
+    btn.title = 'Hentikan proses';
+    btn.setAttribute('aria-label', 'Hentikan proses');
     btn.disabled = false;
-  }
+}
   
-  // --- FUNGSI BARU: Untuk mengembalikan tombol ke keadaan semula ---
-  function restoreSendButton() {
+function restoreSendButton() {
+    // Logika event listener
     if (btn.stopListener) {
         btn.removeEventListener("click", btn.stopListener);
         btn.stopListener = null;
     }
     btn.addEventListener("click", handleSendMessage);
+
+    // Hanya fokus pada perubahan UI
+    btn.classList.remove('btn-stopping');
     btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>';
     btn.title = 'Kirim';
+    btn.setAttribute('aria-label', 'Kirim pesan');
     btn.disabled = !input.value.trim();
-  }
+}
   
   function appendMessage(type, message) {
     const msgWrapper = document.createElement("div");
@@ -1252,9 +1321,9 @@ if (scrollToBottomBtn) {
     tombolMengerti.addEventListener('click', sembunyikanOverlay);
     
     /**
- * VERSI FLAGSHIP: Kustomisasi Cerdas, Opsi Salin & Animasi Profesional
- * Menampilkan modal canggih dengan pratinjau yang diperbarui secara cerdas (debounce), 
- * opsi untuk 'Salin' atau 'Bagikan', dan animasi UI yang halus.
+ * FUNGSI SHARE CHAT YANG SUDAH DIOPTIMALKAN (ANTI FORCE CLOSE)
+ * Versi ini memperbaiki masalah performa dan kebocoran memori dengan mengurangi skala render,
+ * mengelola Object URL secara aktif, dan membuat UI lebih tangguh.
  * @param {HTMLElement} messageWrapper - Elemen pembungkus pesan bot yang dipilih.
  */
 async function handleShareChat(messageWrapper) {
@@ -1263,9 +1332,10 @@ async function handleShareChat(messageWrapper) {
     let tempContainer = null;
     let modalElement = null;
     let lastGeneratedBlob = null;
+    let currentObjectUrl = null; // <-- VARIABEL BARU untuk melacak Object URL
     let isRendering = false;
 
-    // --- Utility Function untuk Debounce ---
+    // Utility Function untuk Debounce tetap sama
     const debounce = (func, delay = 300) => {
         let timeout;
         return (...args) => {
@@ -1284,80 +1354,97 @@ async function handleShareChat(messageWrapper) {
     };
 
     /**
-     * Fungsi inti untuk me-render canvas berdasarkan opsi.
+     * Fungsi inti untuk me-render canvas (sudah dioptimalkan).
      */
     async function renderImage(options) {
+        if (isRendering) return;
         isRendering = true;
+
         const userMessageElement = messageWrapper.previousElementSibling;
-        if (!userMessageElement) throw new Error("Pesan pengguna tidak ditemukan.");
+        if (!userMessageElement) {
+            isRendering = false;
+            throw new Error("Pesan pengguna tidak ditemukan.");
+        }
 
-        const isDarkMode = options.theme === 'auto' ? 
-                           window.matchMedia('(prefers-color-scheme: dark)').matches : 
-                           options.theme === 'dark';
-        
-        const themeColors = {
-            bg: isDarkMode ? '#1E1F22' : '#FFFFFF',
-            text: isDarkMode ? '#E1E1E2' : '#202124',
-            muted: isDarkMode ? '#8E9195' : '#5F6368',
-            border: isDarkMode ? '#444746' : '#E0E0E0',
-        };
+        // Pastikan container sementara selalu dihapus, bahkan jika ada error
+        try {
+            const isDarkMode = options.theme === 'auto' ?
+                window.matchMedia('(prefers-color-scheme: dark)').matches :
+                options.theme === 'dark';
 
-        if (tempContainer) tempContainer.remove();
-        tempContainer = document.createElement('div');
-        Object.assign(tempContainer.style, {
-            position: 'absolute', left: '-9999px',
-            width: (chatBox.clientWidth > 500 ? 500 : chatBox.clientWidth) + 'px',
-            padding: '24px', border: `1px solid ${themeColors.border}`,
-            borderRadius: '16px', backgroundColor: themeColors.bg,
-            fontFamily: `'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif`,
-            transition: 'background-color 0.3s'
-        });
+            const themeColors = {
+                bg: isDarkMode ? '#1E1F22' : '#FFFFFF',
+                text: isDarkMode ? '#E1E1E2' : '#202124',
+                muted: isDarkMode ? '#8E9195' : '#5F6368',
+                border: isDarkMode ? '#444746' : '#E0E0E0',
+            };
 
-        const header = `<div style="display: flex; align-items: center; padding-bottom: 15px; border-bottom: 1px solid ${themeColors.border};">
-            <img src="${logoUrl}" alt="Logo" style="width: 30px; height: 30px; margin-right: 12px; border-radius: 6px;">
-            <input type="text" id="share-title-input" value="${options.title}" style="font-size: 16px; font-weight: 600; color: ${themeColors.text}; background: transparent; border: none; outline: none; width: 100%;">
-        </div>`;
+            tempContainer = document.createElement('div');
+            Object.assign(tempContainer.style, {
+                position: 'absolute',
+                left: '-9999px',
+                width: (chatBox.clientWidth > 500 ? 500 : chatBox.clientWidth) + 'px',
+                padding: '24px',
+                border: `1px solid ${themeColors.border}`,
+                borderRadius: '16px',
+                backgroundColor: themeColors.bg,
+                fontFamily: `'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif`,
+                transition: 'background-color 0.3s'
+            });
 
-        const userClone = userMessageElement.cloneNode(true);
-        const botClone = messageWrapper.cloneNode(true);
-        userClone.querySelector('.message-meta')?.remove();
-        botClone.querySelector('.message-meta')?.remove();
-        
-        const qrCodeHtml = options.showQR ? `<div style="text-align: center; flex-shrink: 0; margin-left: 20px;">
-            <p style="margin: 0 0 8px 0; font-size: 12px; color: ${themeColors.text}; font-weight: 500;">Scan untuk Coba</p>
-            <div style="padding: 5px; border-radius: 8px; background-color: white;">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(window.location.href)}&qzone=1" alt="QR Code" style="display: block;">
-            </div>
-        </div>` : '';
+            const header = `<div style="display: flex; align-items: center; padding-bottom: 15px; border-bottom: 1px solid ${themeColors.border};">
+                <img src="${logoUrl}" alt="Logo" style="width: 30px; height: 30px; margin-right: 12px; border-radius: 6px;">
+                <input type="text" id="share-title-input" value="${options.title}" style="font-size: 16px; font-weight: 600; color: ${themeColors.text}; background: transparent; border: none; outline: none; width: 100%;">
+            </div>`;
 
-        const content = `<div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 0;">
-            <div style="flex-grow: 1;">${userClone.outerHTML}${botClone.outerHTML}</div>
-            ${qrCodeHtml}
-        </div>`;
-        
-        const footer = options.showFooter ? `<div style="padding-top: 10px; text-align: center; font-size: 12px; color: ${themeColors.muted};">
-            Dibuat dengan BroRAX AI &bull; ${new Date().toLocaleDateString('id-ID')}
-        </div>` : '';
+            const userClone = userMessageElement.cloneNode(true);
+            const botClone = messageWrapper.cloneNode(true);
+            userClone.querySelector('.message-meta')?.remove();
+            botClone.querySelector('.message-meta')?.remove();
 
-        tempContainer.innerHTML = header + content + footer;
-        document.body.appendChild(tempContainer);
-        
-        const canvas = await html2canvas(tempContainer, { 
-            useCORS: true, scale: 2, backgroundColor: null 
-        });
-        
-        isRendering = false;
-        return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const qrCodeHtml = options.showQR ? `<div style="text-align: center; flex-shrink: 0; margin-left: 20px;">
+                <p style="margin: 0 0 8px 0; font-size: 12px; color: ${themeColors.text}; font-weight: 500;">Scan untuk Coba</p>
+                <div style="padding: 5px; border-radius: 8px; background-color: white;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(window.location.href)}&qzone=1" alt="QR Code" style="display: block;">
+                </div>
+            </div>` : '';
+
+            const content = `<div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 0;">
+                <div style="flex-grow: 1;">${userClone.outerHTML}${botClone.outerHTML}</div>
+                ${qrCodeHtml}
+            </div>`;
+
+            const footer = options.showFooter ? `<div style="padding-top: 10px; text-align: center; font-size: 12px; color: ${themeColors.muted};">
+                Dibuat dengan BroRAX AI &bull; ${new Date().toLocaleDateString('id-ID')}
+            </div>` : '';
+
+            tempContainer.innerHTML = header + content + footer;
+            document.body.appendChild(tempContainer);
+
+            // --- PERUBAHAN KUNCI 1: Mengurangi 'scale' untuk performa lebih baik ---
+            const canvas = await html2canvas(tempContainer, {
+                useCORS: true,
+                scale: 1.5, // Diturunkan dari 2 untuk mengurangi beban memori & CPU
+                backgroundColor: null
+            });
+
+            return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        } finally {
+            // --- PERUBAHAN KUNCI 2: Memastikan elemen sementara SELALU dihapus ---
+            if (tempContainer) tempContainer.remove();
+            isRendering = false;
+        }
     }
 
     /**
      * Membuat dan menampilkan modal pratinjau.
      */
     function showPreviewModal() {
-        if (modalElement) modalElement.remove();
-        
+        if (document.getElementById('share-preview-modal')) return;
+
         modalElement = document.createElement('div');
         modalElement.id = 'share-preview-modal';
+        // HTML dan Style untuk modal tetap sama seperti kode Anda sebelumnya
         modalElement.innerHTML = `
             <div class="modal-overlay"></div>
             <div class="modal-content">
@@ -1395,24 +1482,19 @@ async function handleShareChat(messageWrapper) {
                 </div>
             </div>
             <style>
+                /* Gaya CSS untuk modal bisa disalin dari kode asli Anda */
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes scaleUp { from { transform: translate(-50%, -50%) scale(0.95); } to { transform: translate(-50%, -50%) scale(1); } }
                 @keyframes spin { to { transform: rotate(360deg); } }
-                #share-preview-modal .modal-overlay { animation: fadeIn 0.3s ease-out; /* ... gaya lain sama ... */ }
-                #share-preview-modal .modal-content { animation: fadeIn 0.3s ease-out, scaleUp 0.3s ease-out; /* ... gaya lain sama ... */ }
-                #share-preview-modal .modal-footer { display: flex; justify-content: flex-end; gap: 12px; /* ... gaya lain sama ... */ }
-                #share-preview-modal .modal-action-btn { display: flex; align-items: center; gap: 8px; font-size: 15px; background: #555; /* ... gaya lain sama ... */ }
-                #share-preview-modal .modal-action-btn.primary { background: #0a84ff; /* ... gaya lain sama ... */ }
-                #share-preview-modal .loader-overlay .spinner { width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; }
-                /* ... semua gaya lain dari versi sebelumnya tetap sama ... */
-                #share-preview-modal .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 999998; }
-                #share-preview-modal .modal-content { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2c2c2e; color: white; border-radius: 12px; width: 90%; max-width: 600px; z-index: 999999; box-shadow: 0 5px 25px rgba(0,0,0,0.4); display: flex; flex-direction: column; max-height: 90vh; }
+                #share-preview-modal .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 999998; animation: fadeIn 0.3s ease-out; }
+                #share-preview-modal .modal-content { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2c2c2e; color: white; border-radius: 12px; width: 90%; max-width: 600px; z-index: 999999; box-shadow: 0 5px 25px rgba(0,0,0,0.4); display: flex; flex-direction: column; max-height: 90vh; animation: fadeIn 0.3s ease-out, scaleUp 0.3s ease-out; }
                 #share-preview-modal .modal-header { padding: 15px 20px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
                 #share-preview-modal .modal-header h3 { margin: 0; font-size: 18px; }
                 #share-preview-modal .modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
-                #share-preview-modal .preview-area { position: relative; margin-bottom: 20px; background: #222; border-radius: 8px; padding: 10px; }
+                #share-preview-modal .preview-area { position: relative; margin-bottom: 20px; background: #222; border-radius: 8px; padding: 10px; min-height: 150px; }
                 #share-preview-modal #preview-image { width: 100%; height: auto; border-radius: 8px; transition: opacity 0.2s; }
                 #share-preview-modal .loader-overlay { position: absolute; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); color: white; display: none; justify-content: center; align-items: center; border-radius: 8px; flex-direction: row; }
+                #share-preview-modal .loader-overlay .spinner { width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; }
                 #share-preview-modal .controls-area { display: flex; flex-direction: column; gap: 15px; }
                 #share-preview-modal .control-group label { display: block; margin-bottom: 8px; font-weight: 500; }
                 #share-preview-modal .theme-buttons { display: flex; gap: 10px; }
@@ -1420,49 +1502,76 @@ async function handleShareChat(messageWrapper) {
                 #share-preview-modal .theme-buttons button.active { background: #0a84ff; border-color: #0a84ff; font-weight: bold; }
                 #share-preview-modal .toggle-group { display: flex; gap: 20px; }
                 #share-preview-modal .toggle-group label { display: flex; align-items: center; gap: 8px; }
-                #share-preview-modal .modal-footer { padding: 15px 20px; border-top: 1px solid #444; flex-shrink: 0; }
+                #share-preview-modal .modal-footer { padding: 15px 20px; border-top: 1px solid #444; flex-shrink: 0; display: flex; justify-content: flex-end; gap: 12px;}
                 #share-preview-modal .modal-close-btn { background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer; }
-                #share-preview-modal .modal-action-btn { border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background-color 0.2s; }
+                #share-preview-modal .modal-action-btn { border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background-color 0.2s; display: flex; align-items: center; gap: 8px; font-size: 15px; background: #555; color: white;}
+                #share-preview-modal .modal-action-btn.primary { background: #0a84ff; }
             </style>
         `;
         document.body.appendChild(modalElement);
-        
+
         const closeModal = () => {
-            modalElement.style.animation = 'fadeOut 0.2s ease-in';
-            setTimeout(() => modalElement.remove(), 200);
+            // --- PERUBAHAN KUNCI 3: Hapus Object URL terakhir saat modal ditutup ---
+            if (currentObjectUrl) {
+                URL.revokeObjectURL(currentObjectUrl);
+            }
+            modalElement.remove();
         };
-        
+
         const updatePreview = async () => {
             if (isRendering) return;
-            modalElement.querySelector('.loader-overlay').style.display = 'flex';
-            const titleInput = tempContainer?.querySelector('#share-title-input');
-            if (titleInput) initialOptions.title = titleInput.value;
 
-            const newBlob = await renderImage(initialOptions);
-            lastGeneratedBlob = newBlob;
-            modalElement.querySelector('#preview-image').src = URL.createObjectURL(newBlob);
-            modalElement.querySelector('.loader-overlay').style.display = 'none';
+            const loader = modalElement.querySelector('.loader-overlay');
+            const controls = modalElement.querySelectorAll('.controls-area button, .controls-area input');
+
+            try {
+                loader.style.display = 'flex';
+                controls.forEach(c => c.disabled = true); // Nonaktifkan kontrol selama render
+
+                const titleInput = document.body.querySelector('#share-title-input');
+                if (titleInput) initialOptions.title = titleInput.value;
+
+                const newBlob = await renderImage(initialOptions);
+                if (!newBlob) return; // Keluar jika render gagal
+
+                // --- PERUBAHAN KUNCI 4: Manajemen memori untuk Object URL ---
+                if (currentObjectUrl) {
+                    URL.revokeObjectURL(currentObjectUrl); // Hapus URL lama
+                }
+
+                lastGeneratedBlob = newBlob;
+                currentObjectUrl = URL.createObjectURL(newBlob); // Buat URL baru
+                modalElement.querySelector('#preview-image').src = currentObjectUrl;
+
+            } catch (error) {
+                console.error("Gagal membuat pratinjau gambar:", error);
+                alert("Waduh, gagal membuat pratinjau. Silakan coba lagi.");
+            } finally {
+                loader.style.display = 'none';
+                controls.forEach(c => c.disabled = false); // Aktifkan kembali kontrol
+            }
         };
-        
+
         const debouncedTitleUpdate = debounce(updatePreview, 400);
 
         // --- Event Listeners ---
         modalElement.querySelector('.modal-overlay').onclick = closeModal;
         modalElement.querySelector('.modal-close-btn').onclick = closeModal;
-        
+
         modalElement.querySelectorAll('.theme-buttons button, .toggle-group input').forEach(el => {
             el.onchange = el.onclick = () => {
-                if(el.matches('button')){
-                  modalElement.querySelector('.theme-buttons button.active').classList.remove('active');
-                  el.classList.add('active');
-                  initialOptions.theme = el.dataset.theme;
+                if (el.matches('button')) {
+                    modalElement.querySelector('.theme-buttons button.active').classList.remove('active');
+                    el.classList.add('active');
+                    initialOptions.theme = el.dataset.theme;
                 } else {
-                  initialOptions[el.dataset.option] = el.checked;
+                    initialOptions[el.dataset.option] = el.checked;
                 }
                 updatePreview();
             };
         });
 
+        // Gunakan event delegation pada body untuk menangani input judul dinamis
         document.body.addEventListener('input', (e) => {
             if (e.target.id === 'share-title-input') {
                 initialOptions.title = e.target.value;
@@ -1487,29 +1596,32 @@ async function handleShareChat(messageWrapper) {
             if (!lastGeneratedBlob) return;
             const imageFile = new File([lastGeneratedBlob], `percakapan-brorax-${Date.now()}.png`, { type: 'image/png' });
             try {
-                await navigator.share({
-                    files: [imageFile],
-                    title: 'Obrolan Keren dengan BroRAX AI',
-                    text: `Penasaran sama AI yang bisa diajak ngobrol santai? Cek hasil percakapanku dengan BroRAX ini! 🤖`
-                });
+                if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+                    await navigator.share({
+                        files: [imageFile],
+                        title: 'Obrolan Keren dengan BroRAX AI',
+                        text: `Penasaran sama AI yang bisa diajak ngobrol santai? Cek hasil percakapanku dengan BroRAX ini! 🤖`
+                    });
+                } else {
+                    alert('Browser Anda tidak mendukung fitur berbagi file ini.');
+                }
             } catch (err) {
-                if(err.name !== 'AbortError') console.error("Error sharing:", err);
-            } finally {
-                closeModal();
+                if (err.name !== 'AbortError') console.error("Error sharing:", err);
             }
         };
 
-        updatePreview();
+        updatePreview(); // Panggil pertama kali untuk render awal
     }
 
+    // --- Main Logic ---
     try {
-        shareButton.className = 'fas fa-spinner fa-spin';
+        shareButton.className = 'fas fa-spinner fa-spin'; // Tampilkan loading
         showPreviewModal();
     } catch (err) {
         console.error("Gagal memulai proses berbagi:", err);
         alert("Waduh, sepertinya ada kendala saat menyiapkan pratinjau.");
     } finally {
-        shareButton.className = originalButtonIcon;
+        shareButton.className = originalButtonIcon; // Kembalikan ikon tombol
     }
 }
 
@@ -1662,21 +1774,23 @@ window.addEventListener('keydown', (e) => {
 let currentTypewriterInstance = null;
 
 /**
- * Class Typewriter Canggih (VERSI DIPERBAIKI)
- * Mengelola semua logika untuk efek pengetikan yang realistis dan efisien.
+ * Class Typewriter Canggih (Versi Revisi dengan localStorage)
+ * Mengelola semua logika untuk efek pengetikan yang realistis, efisien,
+ * dan andal, serta mengelola statusnya sendiri di localStorage.
  */
 class Typewriter {
+    /**
+     * @param {HTMLElement} element - Elemen DOM tempat efek pengetikan akan ditampilkan.
+     * @param {string} htmlContent - Konten HTML mentah yang akan diketik.
+     * @param {HTMLElement} metaElement - Elemen meta (misal: tombol aksi) yang akan ditampilkan setelah selesai.
+     */
     constructor(element, htmlContent, metaElement) {
         this.element = element;
         this.metaElement = metaElement;
         this.htmlContent = htmlContent;
-
-        // Konfigurasi
         this.baseSpeed = 25;
         this.speedJitter = 15;
         this.pauseOnPunctuation = 300;
-
-        // Status Internal
         this.isCancelled = false;
         this.isPaused = false;
         this.lastFrameTime = 0;
@@ -1685,17 +1799,24 @@ class Typewriter {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = this.htmlContent;
         this.nodes = this._flattenNodes(tempDiv);
-
         this.element.innerHTML = '';
         this.cursor = this._createCursor();
         this.element.appendChild(this.cursor);
-
-        // Simpan referensi ke elemen root asli
-        this.rootElement = this.element; 
-        
+        this.rootElement = this.element;
         this.observer = this._createIntersectionObserver();
+
+        // --- PENAMBAHAN localStorage (DI AWAL) ---
+        // Saat instance baru dibuat, langsung catat statusnya.
+        const typewriterState = {
+            status: 'typing',
+            startTime: new Date().toISOString()
+        };
+        localStorage.setItem('typewriterState', JSON.stringify(typewriterState));
+        console.log('Typewriter state SAVED:', typewriterState);
     }
 
+    // ... (Semua metode lain seperti _flattenNodes, _createCursor, _createIntersectionObserver, start, cancel, _frameLoop, _processNextNode tetap sama) ...
+    
     _flattenNodes(rootNode) {
         const flatList = [];
         const traverse = (node) => {
@@ -1729,7 +1850,7 @@ class Typewriter {
                 this.isPaused = !entry.isIntersecting;
             });
         }, options);
-        observer.observe(this.rootElement); // Observasi elemen root
+        observer.observe(this.rootElement);
         return observer;
     }
 
@@ -1746,30 +1867,21 @@ class Typewriter {
             this._finalize(true);
             return;
         }
-        
-        if (!this.lastFrameTime) {
-            this.lastFrameTime = timestamp;
-        }
-
+        if (!this.lastFrameTime) this.lastFrameTime = timestamp;
         if (!this.isPaused) {
             const deltaTime = timestamp - this.lastFrameTime;
             this.timeSinceLastChar += deltaTime;
-
             const currentTarget = this.nodes[0];
             const char = (typeof currentTarget === 'string') ? currentTarget : '';
-
             const requiredDelay = (char === '.' || char === ',') 
                 ? this.pauseOnPunctuation 
                 : this.baseSpeed + (Math.random() - 0.5) * this.speedJitter;
-
             if (this.timeSinceLastChar >= requiredDelay) {
                 this._processNextNode();
                 this.timeSinceLastChar = 0;
             }
         }
-
         this.lastFrameTime = timestamp;
-
         if (this.nodes.length > 0) {
             requestAnimationFrame(this._frameLoop.bind(this));
         } else {
@@ -1777,11 +1889,9 @@ class Typewriter {
         }
     }
     
-    // --- FUNGSI YANG DIPERBAIKI ---
     _processNextNode() {
         const nextNode = this.nodes.shift();
         if (!nextNode) return;
-
         if (typeof nextNode === 'string') {
             const textNode = document.createTextNode(nextNode);
             this.element.insertBefore(textNode, this.cursor);
@@ -1792,19 +1902,18 @@ class Typewriter {
                     nextNode.attributes.forEach(attr => newElement.setAttribute(attr.name, attr.value));
                     this.element.insertBefore(newElement, this.cursor);
                     this.element = newElement;
-                    this.element.appendChild(this.cursor); // <-- PERBAIKAN: Pindahkan kursor ke dalam elemen baru
+                    this.element.appendChild(this.cursor);
                     break;
                 case 'exit':
                     const parent = this.element.parentElement;
-                    parent.appendChild(this.cursor); // <-- PERBAIKAN: Pindahkan kursor ke luar sebelum mengganti elemen
+                    parent.appendChild(this.cursor);
                     this.element = parent;
                     break;
                 case 'instant_append':
-                    // Untuk blok <pre>, highlight setelah dimasukkan
                     this.element.insertBefore(nextNode.node, this.cursor);
                     const codeBlock = nextNode.node.querySelector('code');
-                    if (codeBlock && typeof hljs !== 'undefined') {
-                        hljs.highlightElement(codeBlock);
+                    if (codeBlock && typeof Prism !== 'undefined') {
+                        Prism.highlightElement(codeBlock);
                     }
                     break;
             }
@@ -1812,53 +1921,64 @@ class Typewriter {
         scrollToBottom();
     }
     
+    /**
+     * Menyelesaikan proses pengetikan dan membersihkan status dari localStorage.
+     * @param {boolean} wasCancelled - Menandakan apakah proses ini dibatalkan.
+     */
     _finalize(wasCancelled) {
-        // Tampilkan sisa HTML jika dibatalkan
         if (wasCancelled) {
-            // Hapus semua node yang ada saat ini
             while (this.rootElement.firstChild) {
                 this.rootElement.removeChild(this.rootElement.firstChild);
             }
-            // Masukkan HTML yang sudah jadi dan highlight semua blok kode
             this.rootElement.innerHTML = this.htmlContent;
             this.rootElement.querySelectorAll('pre code').forEach((block) => {
-                if (typeof hljs !== 'undefined') {
-                    hljs.highlightElement(block);
+                if (typeof Prism !== 'undefined') {
+                    Prism.highlightElement(block);
                 }
             });
         }
         
-        if(this.cursor.parentNode) {
-            this.cursor.remove();
-        }
+        this.cursor?.remove();
         this.observer.disconnect();
-        
         this.metaElement.style.visibility = 'visible';
+        
+        // Pulihkan UI setelah semua selesai
         restoreSendButton();
         input.disabled = false;
         input.focus();
         saveChatHistory();
+        
         isTyping = false;
         typewriterControl.stop = () => {};
         currentTypewriterInstance = null;
         checkMessageCount();
+
+        // --- PENAMBAHAN localStorage (DI AKHIR) ---
+        // Saat proses berakhir (selesai/dibatalkan), hapus statusnya.
+        localStorage.removeItem('typewriterState');
+        console.log('Typewriter state CLEARED.');
     }
 }
 
 
-// --- UBAH FUNGSI typewriterEffect MENJADI SEPERTI INI ---
-// Fungsi ini sekarang hanya bertindak sebagai pemicu untuk Class Typewriter.
+/**
+ * Fungsi pemicu untuk memulai efek typewriter.
+ * Bertindak sebagai "jembatan" antara UI dan Class Typewriter.
+ * @param {HTMLElement} element - Elemen target untuk pengetikan.
+ * @param {string} htmlContent - Konten HTML untuk diketik.
+ * @param {HTMLElement} metaElement - Elemen meta untuk ditampilkan setelah selesai.
+ */
 function typewriterEffect(element, htmlContent, metaElement) {
-    if (isTyping) return;
+    if (isTyping) return; // Mencegah beberapa instance berjalan bersamaan
     
     isTyping = true;
-    showStopTypingButton();
+    showStopTypingButton(); // Ubah tombol kirim menjadi tombol stop
     
-    // Buat instance baru dan mulai
+    // Buat instance baru dari class canggih kita dan mulai
     currentTypewriterInstance = new Typewriter(element, htmlContent, metaElement);
     currentTypewriterInstance.start();
 
-    // Arahkan fungsi stop global ke metode cancel pada instance saat ini
+    // Arahkan fungsi stop global ke metode cancel pada instance yang sedang berjalan
     typewriterControl.stop = () => {
         if (currentTypewriterInstance) {
             currentTypewriterInstance.cancel();
@@ -1870,6 +1990,15 @@ function showLoader() {
     // ID unik untuk tag style agar mudah ditemukan dan dihapus
     const styleId = 'dynamic-loader-styles';
     document.getElementById(styleId)?.remove();
+
+    // --- PENAMBAHAN localStorage (DI AWAL) ---
+    // Atur status bahwa aplikasi sedang dalam fase memuat (menunggu API)
+    const loadingState = {
+        status: 'loading',
+        startTime: new Date().toISOString()
+    };
+    localStorage.setItem('loadingState', JSON.stringify(loadingState));
+    console.log('Loading state SAVED:', loadingState);
 
     // Membuat dan menyisipkan elemen <style> untuk animasi teks loader
     const styleElement = document.createElement('style');
@@ -1896,9 +2025,8 @@ function showLoader() {
     `;
     document.head.appendChild(styleElement);
 
-    // --- PERUBAHAN UTAMA: Loader sekarang menjadi elemen simpel tanpa avatar ---
     const loaderWrapper = document.createElement("div");
-    loaderWrapper.className = "loader-wrapper"; // Class simpel, bukan lagi 'message bot'
+    loaderWrapper.className = "loader-wrapper";
     loaderWrapper.innerHTML = `
       <div id="loader-content" style="display: flex; flex-direction: column; align-items: flex-start;">
         <lord-icon id="loader-icon" style="width:50px;height:50px;"></lord-icon>
@@ -1908,15 +2036,14 @@ function showLoader() {
     chatBox.appendChild(loaderWrapper);
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // --- STRUKTUR DATA BARU: Warna ikon dipisah untuk mode terang dan gelap ---
     const animationSteps = [
       { 
         iconSrc: "https://cdn.lordicon.com/zpxybbhl.json", 
         trigger: "loop", 
         text: "Mencari jawaban...", 
         colors: {
-            light: { primary: '#64b5f6', secondary: '#bbdefb' }, // Biru Terang
-            dark:  { primary: '#ffffff', secondary: '#ffffff' }  // Biru Gelap
+            light: { primary: '#64b5f6', secondary: '#bbdefb' },
+            dark:  { primary: '#ffffff', secondary: '#ffffff' }
         }
       },
       { 
@@ -1924,8 +2051,8 @@ function showLoader() {
         trigger: "loop", 
         text: "Menulis Jawaban...",
         colors: {
-            light: { primary: '#81c784', secondary: '#c8e6c9' }, // Hijau Terang
-            dark:  { primary: '#ffffff', secondary: '#ffffff' }  // Hijau Gelap
+            light: { primary: '#81c784', secondary: '#c8e6c9' },
+            dark:  { primary: '#ffffff', secondary: '#ffffff' }
         }
       },
       { 
@@ -1933,8 +2060,8 @@ function showLoader() {
         trigger: "loop", 
         text: "Menyusun respons...",
         colors: {
-            light: { primary: '#ffb74d', secondary: '#ffe0b2' }, // Oranye Terang
-            dark:  { primary: '#ffffff', secondary: '#ffffff' }  // Oranye Gelap
+            light: { primary: '#ffb74d', secondary: '#ffe0b2' },
+            dark:  { primary: '#ffffff', secondary: '#ffffff' }
         }
       },
       { 
@@ -1942,8 +2069,8 @@ function showLoader() {
         trigger: "loop", 
         text: "Hampir selesai!",
         colors: {
-            light: { primary: '#e57373', secondary: '#ffcdd2' }, // Merah Terang
-            dark:  { primary: '#ffffff', secondary: '#ffffff' }  // Merah Gelap
+            light: { primary: '#e57373', secondary: '#ffcdd2' },
+            dark:  { primary: '#ffffff', secondary: '#ffffff' }
         }
       }
     ];
@@ -1958,15 +2085,9 @@ function showLoader() {
         loaderIcon.trigger = step.trigger;
         loaderText.innerText = step.text;
 
-        // --- LOGIKA BARU YANG DIPERBAIKI: Pilih set warna ikon berdasarkan tema ---
         if (step.colors) {
-            // 1. Cek tema saat ini setiap kali langkah diperbarui
             const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            
-            // 2. Pilih objek warna yang sesuai (dark atau light)
             const themeColors = isDarkMode ? step.colors.dark : step.colors.light;
-
-            // 3. Terapkan warna yang sudah dipilih
             loaderIcon.style.setProperty('--lord-icon-primary', themeColors.primary);
             loaderIcon.style.setProperty('--lord-icon-secondary', themeColors.secondary);
         }
@@ -1977,47 +2098,98 @@ function showLoader() {
     updateLoaderStep();
     const animationInterval = setInterval(updateLoaderStep, 4000);
 
+    // Kembalikan objek dengan metode .remove() yang sudah diperbarui
     return {
       remove: () => {
         clearInterval(animationInterval);
         document.getElementById(styleId)?.remove();
         loaderWrapper.remove();
+        
+        // --- PENAMBAHAN localStorage (DI AKHIR) ---
+        // Saat loader dihapus, bersihkan statusnya dari localStorage
+        localStorage.removeItem('loadingState');
+        console.log('Loading state CLEARED.');
       }
     };
 }
 
-// --- FITUR CANGGIH 1 (REVISI): INPUT SUARA YANG TANGGUH & CERDAS ---
+// --- FITUR CANGGIH 1 (REVISI FINAL): INPUT SUARA DENGAN SILENCE DETECTION ---
 const micBtn = document.getElementById('micBtn');
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+// Canggih 1: Tambahkan style untuk animasi "mendengarkan" secara dinamis
+const style = document.createElement('style');
+style.innerHTML = `
+  @keyframes pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.7); }
+    70% { transform: scale(1.05); box-shadow: 0 0 10px 15px rgba(0, 122, 255, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
+  }
+  #micBtn.listening {
+    animation: pulse 1.5s infinite;
+    background-color: #007aff; /* Warna biru yang lebih menonjol */
+    color: white;
+  }
+`;
+document.head.appendChild(style);
+
+
 if (SpeechRecognition) {
-  // PENINGKATAN: Cek apakah halaman dimuat dengan aman (HTTPS)
+  // Cek jika konteks tidak aman (bukan HTTPS)
   if (!window.isSecureContext) {
     micBtn.disabled = true;
-    micBtn.title = "Fitur suara hanya aktif di koneksi HTTPS";
+    micBtn.title = "Fitur suara hanya aktif di koneksi HTTPS yang aman.";
     micBtn.style.opacity = '0.5';
     micBtn.style.cursor = 'not-allowed';
   } else {
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = true; // Terus mendengarkan bahkan setelah jeda singkat
+    recognition.interimResults = true; // Dapatkan hasil sementara saat pengguna berbicara
     recognition.lang = 'id-ID';
 
     let isListening = false;
-    let finalTranscript = '';
+    let silenceTimer = null; // Timer untuk mendeteksi keheningan
+    const SILENCE_DELAY = 1500; // Jeda 1.5 detik untuk dianggap hening
 
-    // Event saat rekaman suara dimulai
-    recognition.onstart = () => {
+    // Fungsi untuk memulai sesi mendengarkan
+    const startListening = () => {
       isListening = true;
-      finalTranscript = ''; // Kosongkan transkrip setiap sesi baru dimulai
+      input.value = ''; // Kosongkan input setiap sesi baru
+      finalTranscript = ''; // Reset transkrip final
+      recognition.start();
       micBtn.classList.add('listening');
       micBtn.title = "Berhenti merekam...";
-      input.placeholder = "Mendengarkan...";
+      input.placeholder = "Saya sedang mendengarkan...";
+      btn.disabled = true; // Matikan tombol kirim saat merekam
+    };
+    
+    // Fungsi untuk menghentikan sesi mendengarkan
+    const stopListening = () => {
+        isListening = false;
+        recognition.stop();
+        clearTimeout(silenceTimer); // Hapus timer jika dihentikan manual
+        micBtn.classList.remove('listening');
+        micBtn.title = "Gunakan suara";
+        input.placeholder = "Ketik pesanmu di sini...";
+    };
+
+    // Event saat rekaman suara dimulai oleh browser
+    recognition.onstart = () => {
+      console.log('Speech recognition active.');
     };
 
     // Event saat ada hasil (baik sementara maupun final)
     recognition.onresult = (event) => {
+      // Canggih 2: Silence Detection
+      // Hapus timer lama dan atur yang baru setiap kali ada kata terdeteksi
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => {
+          console.log("Silence detected, stopping recognition.");
+          stopListening();
+      }, SILENCE_DELAY);
+
       let interimTranscript = '';
+      let finalTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
           finalTranscript += event.results[i][0].transcript;
@@ -2025,50 +2197,58 @@ if (SpeechRecognition) {
           interimTranscript += event.results[i][0].transcript;
         }
       }
-      input.value = finalTranscript + interimTranscript;
-      btn.disabled = !input.value.trim();
+      
+      input.value = finalTranscript.trim() + ' ' + interimTranscript.trim();
     };
     
-    // Event saat rekaman suara berakhir
+    // Event saat rekaman suara berakhir (baik manual, karena hening, atau error)
     recognition.onend = () => {
-      isListening = false;
-      micBtn.classList.remove('listening');
-      micBtn.title = "Gunakan suara";
-      input.placeholder = "Ketik pesanmu di sini...";
+      console.log('Speech recognition ended.');
+      stopListening(); // Pastikan semua state UI direset
+      
+      const finalResult = input.value.trim();
+      if (finalResult) {
+        console.log(`Final result: "${finalResult}". Sending message.`);
+        // Canggih 3: Otomatis kirim pesan setelah selesai berbicara
+        handleSendMessage(); 
+      }
     };
 
-    // PENINGKATAN: Penanganan error yang jauh lebih spesifik
+    // Penanganan error yang lebih spesifik dan ramah pengguna
     recognition.onerror = (event) => {
       console.error("Speech recognition error:", event.error);
-      let errorMessage = "Terjadi error pada fitur suara.";
+      let errorMessage = "Terjadi kesalahan pada fitur suara.";
       switch (event.error) {
           case 'not-allowed':
-              errorMessage = "Akses mikrofon ditolak. Harap izinkan akses mikrofon pada pengaturan browser Anda untuk menggunakan fitur ini.";
-              break;
           case 'service-not-allowed':
-              errorMessage = "Akses mikrofon tidak diizinkan karena kebijakan keamanan. Pastikan Anda menggunakan HTTPS.";
+              errorMessage = "Akses mikrofon ditolak. Harap izinkan akses mikrofon di pengaturan browser Anda untuk menggunakan fitur ini.";
               break;
           case 'no-speech':
-              errorMessage = "Tidak ada suara yang terdeteksi. Coba lagi.";
+              errorMessage = "Tidak ada suara yang terdeteksi. Silakan coba lagi.";
               break;
           case 'audio-capture':
-              errorMessage = "Gagal menangkap audio. Periksa apakah mikrofon Anda berfungsi.";
+              errorMessage = "Gagal menangkap audio. Pastikan mikrofon Anda berfungsi dan tidak digunakan oleh aplikasi lain.";
+              break;
+          case 'network':
+              errorMessage = "Masalah jaringan. Fitur suara memerlukan koneksi internet yang stabil.";
               break;
       }
+      // Tampilkan pesan error dengan cara yang tidak mengganggu (misal: toast/alert)
+      // Untuk contoh ini, kita gunakan alert.
       alert(errorMessage);
     };
 
-    // Event listener untuk tombol mikrofon
+    // Event listener utama untuk tombol mikrofon
     micBtn.addEventListener('click', () => {
       if (isListening) {
-        recognition.stop();
+        stopListening();
       } else {
         // Minta izin dan mulai jika belum pernah
         try {
-          recognition.start();
+          startListening();
         } catch(e) {
           console.error("Gagal memulai recognition:", e);
-          alert("Tidak dapat memulai fitur suara. Mungkin sedang digunakan di tab lain.");
+          alert("Tidak dapat memulai fitur suara. Mungkin browser Anda tidak mendukung atau sedang ada masalah.");
         }
       }
     });
@@ -2360,5 +2540,6 @@ if(cropBtn) cropBtn.addEventListener('click', () => cropper?.crop());
 if(resetCropBtn) resetCropBtn.addEventListener('click', () => cropper?.reset());
 sendUploadBtn.addEventListener('click', uploadFile);
 
-// --- AKHIR KODE FITUR UPLOAD (VERSI CANGGIH) ---
+restoreProcessOnLoad();
+checkAndRestoreLoader();
 });

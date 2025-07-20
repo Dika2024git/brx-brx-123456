@@ -17,5 +17,21 @@
   ],
   "theme_color": "#ffffff",
   "background_color": "#ffffff",
-  "display": "standalone"
+  "display": "standalone",
+  "shortcuts": [
+    {
+      "name": "Setelan Situs",
+      "short_name": "Setelan",
+      "description": "Buka pengaturan situs",
+      "url": "/settings.html",
+      "icons": [{ "src": "/icon-settings.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Info Aplikasi",
+      "short_name": "Info",
+      "description": "Lihat info aplikasi",
+      "url": "/info.html",
+      "icons": [{ "src": "/icon-info.png", "sizes": "192x192" }]
+    }
+  ]
 }
