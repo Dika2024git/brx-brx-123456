@@ -757,9 +757,7 @@ if (target.matches('.copy-code-btn')) {
   // --- FUNGSI UTAMA PENGIRIMAN PESAN (SUDAH DIPERBARUI) ---
   async function handleSendMessage() {
     const text = input.value.trim();
-    
-    if (text) localStorage.setItem('lastUserPrompt', text);
-    
+
     // --- PENGECEKAN KILL SWITCH ---
     if (systemConfig && systemConfig.api_enabled === false) {
         // Tampilkan pesan offline yang diatur di JSON
@@ -847,7 +845,6 @@ if (target.matches('.copy-code-btn')) {
           showBotOfflineMessage(offlineMessage, text);
       }
   } finally {
-    localStorage.removeItem('lastUserPrompt');
       fetchController = null;
       // Hanya pulihkan tombol jika proses pengetikan tidak sedang berjalan
       if (!isTyping) {
@@ -856,72 +853,6 @@ if (target.matches('.copy-code-btn')) {
       }
   }
   }
-  
-  /**
- * Memeriksa localStorage dan menampilkan kembali loader jika proses terputus.
- */
-function checkAndRestoreLoader() {
-    // Cek apakah ada status 'loading' yang tersimpan
-    if (localStorage.getItem('loadingState')) {
-        console.log('🔄 Loader state terdeteksi. Menampilkan kembali loader...');
-        showLoader();
-    }
-}
-
-/**
- * Memeriksa state saat halaman dimuat, menampilkan loader, DAN memulai ulang
- * proses fetch yang terputus (VERSI PERBAIKAN).
- */
-async function restoreProcessOnLoad() {
-    const isLoading = localStorage.getItem('loadingState');
-    const lastPrompt = localStorage.getItem('lastUserPrompt');
-
-    // Muat riwayat chat terlebih dahulu.
-    // Fungsi ini SUDAH menampilkan pesan terakhir Anda yang tersimpan.
-    loadChatHistory();
-
-    // Jika ada proses loading yang terputus & promptnya tersimpan
-    if (isLoading && lastPrompt) {
-        console.log('🔄 Memulai ulang proses fetch untuk prompt:', lastPrompt);
-
-        // =================================================================
-        // HAPUS BARIS INI KARENA MENYEBABKAN DUPLIKASI PESAN
-        // appendMessage("user", lastPrompt); 
-        // =================================================================
-        
-        // Langsung tampilkan loader dan jalankan kembali proses fetch
-        const loader = showLoader();
-        
-        const backendUrl = 'https://api.siputzx.my.id/api/ai/gpt3';
-        const url = new URL(backendUrl);
-        url.searchParams.append('prompt', SYSTEM_INSTRUCTION);
-        url.searchParams.append('content', lastPrompt);
-
-        try {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error('Gagal mengambil data setelah refresh');
-            
-            const data = await res.json();
-            const rawBotMessage = data.data || "";
-
-            loader.remove(); // Hentikan loader setelah berhasil
-            
-            if (isImageUrl(rawBotMessage)) {
-                appendImageMessage("bot", rawBotMessage);
-            } else {
-                appendMessage("bot", marked.parse(rawBotMessage));
-            }
-        } catch (error) {
-            console.error("Gagal melanjutkan proses setelah refresh:", error);
-            loader.remove();
-            appendInstantMessage('bot', 'Waduh, koneksi terputus saat memproses. Coba lagi ya.');
-        } finally {
-            restoreSendButton();
-            localStorage.removeItem('loadingState');
-            localStorage.removeItem('lastUserPrompt');
-        }
-    }
-}
   
   /**
  * Menampilkan pesan bahwa bot sedang offline/mengalami kendala teknis.
@@ -1041,43 +972,43 @@ function showBotOfflineMessage(message, originalQuery) {
   }
   
   function showStopTypingButton() {
-    // Logika event listener
+    // Hapus listener lama untuk menghindari tumpang tindih
     if (btn.stopListener) {
         btn.removeEventListener("click", btn.stopListener);
     }
     btn.removeEventListener("click", handleSendMessage);
 
+    // Definisikan listener yang sudah diperbaiki
     const stopListener = () => {
-        if (fetchController) fetchController.abort();
-        else if (isTyping && typewriterControl.stop) typewriterControl.stop();
+        // Jika fetchController ada (artinya sedang loading/menunggu)
+        if (fetchController) {
+            fetchController.abort(); // HANYA panggil abort. JANGAN set ke null di sini.
+        } 
+        // Jika tidak, dan typewriter sedang berjalan
+        else if (isTyping && typewriterControl.stop) {
+            typewriterControl.stop();
+        }
     };
 
     btn.addEventListener("click", stopListener);
-    btn.stopListener = stopListener;
+    btn.stopListener = stopListener; // Simpan referensi
 
-    // Hanya fokus pada perubahan UI
-    btn.classList.add('btn-stopping');
     btn.innerHTML = '<i class="fas fa-stop"></i>';
-    btn.title = 'Hentikan proses';
-    btn.setAttribute('aria-label', 'Hentikan proses');
+    btn.title = 'Hentikan';
     btn.disabled = false;
-}
+  }
   
-function restoreSendButton() {
-    // Logika event listener
+  // --- FUNGSI BARU: Untuk mengembalikan tombol ke keadaan semula ---
+  function restoreSendButton() {
     if (btn.stopListener) {
         btn.removeEventListener("click", btn.stopListener);
         btn.stopListener = null;
     }
     btn.addEventListener("click", handleSendMessage);
-
-    // Hanya fokus pada perubahan UI
-    btn.classList.remove('btn-stopping');
     btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>';
     btn.title = 'Kirim';
-    btn.setAttribute('aria-label', 'Kirim pesan');
     btn.disabled = !input.value.trim();
-}
+  }
   
   function appendMessage(type, message) {
     const msgWrapper = document.createElement("div");
@@ -1770,13 +1701,15 @@ window.addEventListener('keydown', (e) => {
 
 // --- (PASTE KODE INI DI BAGIAN ATAS DARI FUNGSI "handleSendMessage") ---
 
+// --- KODE BARU: GANTI CLASS TYPEWRITER DAN FUNGSI typewriterEffect DENGAN INI ---
+
 // Variabel untuk menyimpan instance typewriter yang sedang aktif
 let currentTypewriterInstance = null;
 
 /**
- * Class Typewriter Canggih (Versi Revisi dengan localStorage)
+ * Class Typewriter Canggih (Versi Revisi)
  * Mengelola semua logika untuk efek pengetikan yang realistis, efisien,
- * dan andal, serta mengelola statusnya sendiri di localStorage.
+ * dan andal dalam menangani konten HTML yang kompleks.
  */
 class Typewriter {
     /**
@@ -1788,47 +1721,56 @@ class Typewriter {
         this.element = element;
         this.metaElement = metaElement;
         this.htmlContent = htmlContent;
-        this.baseSpeed = 25;
-        this.speedJitter = 15;
-        this.pauseOnPunctuation = 300;
-        this.isCancelled = false;
-        this.isPaused = false;
+
+        // --- Konfigurasi untuk nuansa pengetikan yang lebih natural ---
+        this.baseSpeed = 25; // Kecepatan dasar dalam milidetik per karakter.
+        this.speedJitter = 15; // Variasi acak untuk kecepatan (plus/minus).
+        this.pauseOnPunctuation = 300; // Jeda ekstra saat bertemu tanda baca.
+
+        // --- Status Internal ---
+        this.isCancelled = false; // Flag untuk menghentikan paksa.
+        this.isPaused = false;    // Flag untuk jeda saat di luar viewport.
         this.lastFrameTime = 0;
         this.timeSinceLastChar = 0;
 
+        // "Meratakan" struktur HTML menjadi serangkaian instruksi yang mudah dieksekusi.
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = this.htmlContent;
         this.nodes = this._flattenNodes(tempDiv);
+
+        // Inisialisasi tampilan awal
         this.element.innerHTML = '';
         this.cursor = this._createCursor();
         this.element.appendChild(this.cursor);
-        this.rootElement = this.element;
+        
+        // Simpan referensi ke elemen root untuk observasi
+        this.rootElement = this.element; 
+        
+        // --- Fitur Canggih: Jeda otomatis saat tidak terlihat ---
         this.observer = this._createIntersectionObserver();
-
-        // --- PENAMBAHAN localStorage (DI AWAL) ---
-        // Saat instance baru dibuat, langsung catat statusnya.
-        const typewriterState = {
-            status: 'typing',
-            startTime: new Date().toISOString()
-        };
-        localStorage.setItem('typewriterState', JSON.stringify(typewriterState));
-        console.log('Typewriter state SAVED:', typewriterState);
     }
 
-    // ... (Semua metode lain seperti _flattenNodes, _createCursor, _createIntersectionObserver, start, cancel, _frameLoop, _processNextNode tetap sama) ...
-    
+    /**
+     * Mengubah struktur node DOM menjadi array instruksi yang datar.
+     * @param {HTMLElement} rootNode - Elemen yang berisi HTML untuk diproses.
+     * @returns {Array<Object|string>} - Array berisi karakter atau objek aksi.
+     */
     _flattenNodes(rootNode) {
         const flatList = [];
         const traverse = (node) => {
             if (node.nodeType === Node.TEXT_NODE) {
+                // Pecah teks menjadi karakter individual
                 flatList.push(...node.textContent.split(''));
             } else if (node.nodeType === Node.ELEMENT_NODE) {
+                // Strategi khusus untuk blok kode: tampilkan instan demi performa
                 if (node.tagName === 'PRE') {
                     flatList.push({ action: 'instant_append', node: node.cloneNode(true) });
-                    return;
+                    return; // Lewati pemrosesan anak-anak dari <pre>
                 }
+                // Catat instruksi untuk "memasuki" sebuah tag HTML
                 flatList.push({ action: 'enter', tagName: node.tagName, attributes: Array.from(node.attributes) });
                 Array.from(node.childNodes).forEach(traverse);
+                // Catat instruksi untuk "keluar" dari sebuah tag
                 flatList.push({ action: 'exit' });
             }
         };
@@ -1836,6 +1778,10 @@ class Typewriter {
         return flatList;
     }
 
+    /**
+     * Membuat elemen DOM untuk kursor yang berkedip.
+     * @returns {HTMLElement} - Elemen span untuk kursor.
+     */
     _createCursor() {
         const cursor = document.createElement('span');
         cursor.className = 'typing-cursor';
@@ -1843,8 +1789,13 @@ class Typewriter {
         return cursor;
     }
     
+    /**
+     * Menginisialisasi IntersectionObserver untuk menjeda animasi saat elemen
+     * tidak terlihat di layar, menghemat sumber daya CPU.
+     * @returns {IntersectionObserver}
+     */
     _createIntersectionObserver() {
-        const options = { root: null, threshold: 0.1 };
+        const options = { root: null, threshold: 0.1 }; // Jeda jika kurang dari 10% terlihat
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 this.isPaused = !entry.isIntersecting;
@@ -1854,44 +1805,68 @@ class Typewriter {
         return observer;
     }
 
+    /**
+     * Memulai proses pengetikan.
+     */
     start() {
         requestAnimationFrame(this._frameLoop.bind(this));
     }
 
+    /**
+     * Membatalkan proses pengetikan dan langsung menampilkan hasil akhir.
+     */
     cancel() {
         this.isCancelled = true;
     }
     
+    /**
+     * Loop utama animasi yang dipanggil oleh requestAnimationFrame.
+     * @param {number} timestamp - Waktu saat ini yang disediakan oleh browser.
+     */
     _frameLoop(timestamp) {
         if (this.isCancelled) {
-            this._finalize(true);
+            this._finalize(true); // Selesaikan jika dibatalkan
             return;
         }
+        
         if (!this.lastFrameTime) this.lastFrameTime = timestamp;
+
+        // Hanya proses jika tidak dijeda (elemen terlihat di layar)
         if (!this.isPaused) {
             const deltaTime = timestamp - this.lastFrameTime;
             this.timeSinceLastChar += deltaTime;
+
             const currentTarget = this.nodes[0];
             const char = (typeof currentTarget === 'string') ? currentTarget : '';
+            
+            // Tentukan jeda yang diperlukan berdasarkan karakter
             const requiredDelay = (char === '.' || char === ',') 
                 ? this.pauseOnPunctuation 
                 : this.baseSpeed + (Math.random() - 0.5) * this.speedJitter;
+
             if (this.timeSinceLastChar >= requiredDelay) {
                 this._processNextNode();
-                this.timeSinceLastChar = 0;
+                this.timeSinceLastChar = 0; // Reset timer karakter
             }
         }
+
         this.lastFrameTime = timestamp;
+
+        // Lanjutkan loop jika masih ada node untuk diproses
         if (this.nodes.length > 0) {
             requestAnimationFrame(this._frameLoop.bind(this));
         } else {
-            this._finalize(false);
+            this._finalize(false); // Selesaikan jika sudah selesai normal
         }
     }
     
+    /**
+     * Memproses satu node (karakter atau instruksi HTML) dari antrian.
+     */
     _processNextNode() {
         const nextNode = this.nodes.shift();
         if (!nextNode) return;
+
         if (typeof nextNode === 'string') {
             const textNode = document.createTextNode(nextNode);
             this.element.insertBefore(textNode, this.cursor);
@@ -1901,16 +1876,17 @@ class Typewriter {
                     const newElement = document.createElement(nextNode.tagName);
                     nextNode.attributes.forEach(attr => newElement.setAttribute(attr.name, attr.value));
                     this.element.insertBefore(newElement, this.cursor);
-                    this.element = newElement;
-                    this.element.appendChild(this.cursor);
+                    this.element = newElement; // Pindah konteks ke elemen baru
+                    this.element.appendChild(this.cursor); // Pindahkan kursor ke dalam elemen baru
                     break;
                 case 'exit':
                     const parent = this.element.parentElement;
-                    parent.appendChild(this.cursor);
-                    this.element = parent;
+                    parent.appendChild(this.cursor); // Pindahkan kursor ke luar
+                    this.element = parent; // Kembalikan konteks ke parent
                     break;
                 case 'instant_append':
                     this.element.insertBefore(nextNode.node, this.cursor);
+                    // Jalankan syntax highlighting jika diperlukan (misal: Prism.js atau highlight.js)
                     const codeBlock = nextNode.node.querySelector('code');
                     if (codeBlock && typeof Prism !== 'undefined') {
                         Prism.highlightElement(codeBlock);
@@ -1918,18 +1894,21 @@ class Typewriter {
                     break;
             }
         }
-        scrollToBottom();
+        scrollToBottom(); // Pastikan chat selalu terlihat
     }
     
     /**
-     * Menyelesaikan proses pengetikan dan membersihkan status dari localStorage.
+     * Menyelesaikan proses pengetikan, baik normal maupun dibatalkan.
      * @param {boolean} wasCancelled - Menandakan apakah proses ini dibatalkan.
      */
     _finalize(wasCancelled) {
+        // Jika dibatalkan, langsung render seluruh HTML sisanya.
         if (wasCancelled) {
+            // Hapus semua node yang ada saat ini untuk menghindari duplikasi
             while (this.rootElement.firstChild) {
                 this.rootElement.removeChild(this.rootElement.firstChild);
             }
+            // Masukkan HTML yang sudah jadi dan highlight semua blok kode
             this.rootElement.innerHTML = this.htmlContent;
             this.rootElement.querySelectorAll('pre code').forEach((block) => {
                 if (typeof Prism !== 'undefined') {
@@ -1938,25 +1917,21 @@ class Typewriter {
             });
         }
         
-        this.cursor?.remove();
-        this.observer.disconnect();
-        this.metaElement.style.visibility = 'visible';
+        this.cursor?.remove(); // Hapus kursor dari DOM
+        this.observer.disconnect(); // Hentikan observasi untuk membersihkan memori
         
-        // Pulihkan UI setelah semua selesai
+        // Tampilkan elemen meta dan pulihkan UI
+        this.metaElement.style.visibility = 'visible';
         restoreSendButton();
         input.disabled = false;
         input.focus();
         saveChatHistory();
         
+        // Reset status global
         isTyping = false;
         typewriterControl.stop = () => {};
         currentTypewriterInstance = null;
-        checkMessageCount();
-
-        // --- PENAMBAHAN localStorage (DI AKHIR) ---
-        // Saat proses berakhir (selesai/dibatalkan), hapus statusnya.
-        localStorage.removeItem('typewriterState');
-        console.log('Typewriter state CLEARED.');
+        checkMessageCount(); // Panggil penghitung pesan setelah selesai
     }
 }
 
@@ -1991,15 +1966,6 @@ function showLoader() {
     const styleId = 'dynamic-loader-styles';
     document.getElementById(styleId)?.remove();
 
-    // --- PENAMBAHAN localStorage (DI AWAL) ---
-    // Atur status bahwa aplikasi sedang dalam fase memuat (menunggu API)
-    const loadingState = {
-        status: 'loading',
-        startTime: new Date().toISOString()
-    };
-    localStorage.setItem('loadingState', JSON.stringify(loadingState));
-    console.log('Loading state SAVED:', loadingState);
-
     // Membuat dan menyisipkan elemen <style> untuk animasi teks loader
     const styleElement = document.createElement('style');
     styleElement.id = styleId;
@@ -2025,8 +1991,9 @@ function showLoader() {
     `;
     document.head.appendChild(styleElement);
 
+    // --- PERUBAHAN UTAMA: Loader sekarang menjadi elemen simpel tanpa avatar ---
     const loaderWrapper = document.createElement("div");
-    loaderWrapper.className = "loader-wrapper";
+    loaderWrapper.className = "loader-wrapper"; // Class simpel, bukan lagi 'message bot'
     loaderWrapper.innerHTML = `
       <div id="loader-content" style="display: flex; flex-direction: column; align-items: flex-start;">
         <lord-icon id="loader-icon" style="width:50px;height:50px;"></lord-icon>
@@ -2036,14 +2003,15 @@ function showLoader() {
     chatBox.appendChild(loaderWrapper);
     chatBox.scrollTop = chatBox.scrollHeight;
 
+    // --- STRUKTUR DATA BARU: Warna ikon dipisah untuk mode terang dan gelap ---
     const animationSteps = [
       { 
         iconSrc: "https://cdn.lordicon.com/zpxybbhl.json", 
         trigger: "loop", 
         text: "Mencari jawaban...", 
         colors: {
-            light: { primary: '#64b5f6', secondary: '#bbdefb' },
-            dark:  { primary: '#ffffff', secondary: '#ffffff' }
+            light: { primary: '#64b5f6', secondary: '#bbdefb' }, // Biru Terang
+            dark:  { primary: '#ffffff', secondary: '#ffffff' }  // Biru Gelap
         }
       },
       { 
@@ -2051,8 +2019,8 @@ function showLoader() {
         trigger: "loop", 
         text: "Menulis Jawaban...",
         colors: {
-            light: { primary: '#81c784', secondary: '#c8e6c9' },
-            dark:  { primary: '#ffffff', secondary: '#ffffff' }
+            light: { primary: '#81c784', secondary: '#c8e6c9' }, // Hijau Terang
+            dark:  { primary: '#ffffff', secondary: '#ffffff' }  // Hijau Gelap
         }
       },
       { 
@@ -2060,8 +2028,8 @@ function showLoader() {
         trigger: "loop", 
         text: "Menyusun respons...",
         colors: {
-            light: { primary: '#ffb74d', secondary: '#ffe0b2' },
-            dark:  { primary: '#ffffff', secondary: '#ffffff' }
+            light: { primary: '#ffb74d', secondary: '#ffe0b2' }, // Oranye Terang
+            dark:  { primary: '#ffffff', secondary: '#ffffff' }  // Oranye Gelap
         }
       },
       { 
@@ -2069,8 +2037,8 @@ function showLoader() {
         trigger: "loop", 
         text: "Hampir selesai!",
         colors: {
-            light: { primary: '#e57373', secondary: '#ffcdd2' },
-            dark:  { primary: '#ffffff', secondary: '#ffffff' }
+            light: { primary: '#e57373', secondary: '#ffcdd2' }, // Merah Terang
+            dark:  { primary: '#ffffff', secondary: '#ffffff' }  // Merah Gelap
         }
       }
     ];
@@ -2085,9 +2053,15 @@ function showLoader() {
         loaderIcon.trigger = step.trigger;
         loaderText.innerText = step.text;
 
+        // --- LOGIKA BARU YANG DIPERBAIKI: Pilih set warna ikon berdasarkan tema ---
         if (step.colors) {
+            // 1. Cek tema saat ini setiap kali langkah diperbarui
             const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            // 2. Pilih objek warna yang sesuai (dark atau light)
             const themeColors = isDarkMode ? step.colors.dark : step.colors.light;
+
+            // 3. Terapkan warna yang sudah dipilih
             loaderIcon.style.setProperty('--lord-icon-primary', themeColors.primary);
             loaderIcon.style.setProperty('--lord-icon-secondary', themeColors.secondary);
         }
@@ -2098,17 +2072,11 @@ function showLoader() {
     updateLoaderStep();
     const animationInterval = setInterval(updateLoaderStep, 4000);
 
-    // Kembalikan objek dengan metode .remove() yang sudah diperbarui
     return {
       remove: () => {
         clearInterval(animationInterval);
         document.getElementById(styleId)?.remove();
         loaderWrapper.remove();
-        
-        // --- PENAMBAHAN localStorage (DI AKHIR) ---
-        // Saat loader dihapus, bersihkan statusnya dari localStorage
-        localStorage.removeItem('loadingState');
-        console.log('Loading state CLEARED.');
       }
     };
 }
@@ -2539,7 +2507,4 @@ dragDropZone.addEventListener('drop', (e) => {
 if(cropBtn) cropBtn.addEventListener('click', () => cropper?.crop());
 if(resetCropBtn) resetCropBtn.addEventListener('click', () => cropper?.reset());
 sendUploadBtn.addEventListener('click', uploadFile);
-
-restoreProcessOnLoad();
-checkAndRestoreLoader();
 });
