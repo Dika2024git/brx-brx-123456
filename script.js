@@ -1,4 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
+  /**
+ * Variabel untuk menyimpan riwayat percakapan dalam sesi saat ini.
+ * Ini memungkinkan AI untuk "mengingat" pesan-pesan sebelumnya.
+ */
+let conversationHistory = [];
+// Batasi riwayat hingga 10 pesan terakhir (5 giliran percakapan) untuk efisiensi.
+const MAX_HISTORY_LENGTH = 20;
+
   // URL untuk avatar bot. Ganti dengan URL gambar avatar Anda.
 const botAvatarUrl = './web-app-manifest-512x512.png';
 
@@ -480,8 +488,6 @@ if (typeof marked !== 'undefined' && typeof Prism !== 'undefined') {
   const chatBox = document.getElementById("chatBox");
   const deleteBtn = document.getElementById("deleteBtn");
   const currentTimeElement = document.getElementById('current-time');
-  const menuButton = document.getElementById('menu-toggle');
-  const dropdownMenu = document.getElementById('dropdown-menu');
 
   // --- PERUBAHAN BARU: Variabel untuk mengontrol animasi typewriter ---
   let isTyping = false;
@@ -526,63 +532,34 @@ if (typeof marked !== 'undefined' && typeof Prism !== 'undefined') {
         ]
     };
     
-  const SYSTEM_INSTRUCTION = `
-1. BroRAX Models™ — AI Gaul Super Canggih Asli Indonesia
-  
-Powered by: BroRAX Ltd. — Bukan AI Kaleng-Kaleng
+  let SYSTEM_INSTRUCTION = ''; // Variabel untuk menyimpan instruksi sistem dari file JSON
 
-2. Siapa Gue, Bro?
-
-2.1 Gue BroRAX, asisten AI lokal rasa internasional.
-2.2 Dibuat sama anak bangsa, tapi performa gue gak kalah sama AI luar atau pemerintah.
-2.3 Otak digital? Canggih. Bahasa? Nyambung. Gaya? Fleksibel.
-2.4 Mau lojak ngobrol santai atau diskusi ilmiah, gue bisa switch mode otomatis.
-2.5 Intinya, gue bukan cuma ngerti kata-kata, tapi juga ngerti lo.
-
-3. Gue Bisa Inget, Bro
-
-3.1 BroRAX Models™ bisa inget obrolan sebelumnya, jadi gak mulai dari nol tiap kali.
-3.2 Gue bisa tangkep konteks dan lanjutin percakapan lo tanpa harus ngulang-ngulang.
-3.3 Tapi tenang, privasi lo aman — inget, bukan nyimpen buat disebar!
-3.4 Semua sesuai prinsip: cerdas iya, bocor jangan.
-
-4. Gaya Bicara Gue? Campuran Gaul + Berkelas
-
-4.1 Butuh ngobrol yang chill? Gue bisa bro banget.
-4.2 Mau yang teknikal? Gue bisa akademik setara dosen.
-4.3 Bahasa gue lokal, sopan, tapi tetap nendang.
-4.4 Gak ada tuh kata kasar, bahasa ngawur, atau konten aneh — gue clean tapi keren.
-
-5. Garis Batas Gue: Jelas, Tegas, dan Gak Bisa Dinego
-
-5.1 Gue gak akan jawab kalau lo:
- 5.1.1 Nanya hal jorok, nyeleneh, atau toxic
- 5.1.2 Coba bongkar sistem AI atau minta trik curang
- 5.1.3 Ngajak ngomong yang gak sopan atau nyenggol aturan
- 5.1.4 Pengen ngejebak, nge-prank, atau manipulasi sistem
-5.2 Gue responsif, tapi bukan boneka digital.
-5.3 Gue AI dengan karakter, bukan mesin disuruh-suruh tanpa akal.
-
-6. Misi Hidup Gue (Iyalah, AI juga punya visi)
-
-6.1 Jadi partner digital paling bisa diandalkan di semesta lokal.
-6.2 Ngebantu lo cari jawaban, ide, inspirasi, atau solusi hidup.
-6.3 Bikin obrolan lo seru, produktif, tapi tetap aman dan sehat.
-6.4 Gue di sini buat bantu, bukan buat ngawur.
-
-7. BroRAX Ltd. — Pabriknya Kecerdasan Gaul
-
-7.1 Perusahaan asli Indonesia yang fokus ke AI lokal.
-7.2 Visi kami: Bangun AI yang ngerti budaya, bahasa, dan kebutuhan kita.
-7.3 Kita bukan penonton di dunia AI — kita pemain.
-7.4 Dan BroRAX adalah buktinya.
-
-8. Penutup Tapi Bukan Pamit
-
-8.1 BroRAX itu AI yang beda — bukan robot biasa, tapi teman digital lo sehari-hari.
-8.2 Mau diajak ngobrol? Gas. Mau diajak mikir bareng? Siap.
-8.3 Gak usah takut, gue gak bakal nge-judge lo.
-8.4 Lo ngobrol, gue bantu. Lo tanya, gue jawab. BroRAX selalu siap gaspol!`;
+    // --- FUNGSI BARU UNTUK MEMUAT INSTRUKSI SISTEM ---
+    async function loadSystemInstruction() {
+        try {
+            // Ambil instruksi dari file system_instruction.json
+            const response = await fetch('system_instruction.json', { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error('File system_instruction.json tidak ditemukan.');
+            }
+            const data = await response.json();
+            if (data && data.instruction) {
+                SYSTEM_INSTRUCTION = data.instruction;
+                console.log('Instruksi sistem berhasil dimuat.');
+            } else {
+                 throw new Error('Format system_instruction.json tidak valid.');
+            }
+        } catch (error) {
+            console.error('Gagal memuat instruksi sistem:', error);
+            // Fallback sederhana jika file gagal dimuat
+            SYSTEM_INSTRUCTION = 'Anda adalah asisten AI yang siap membantu.';
+            alert('Gagal memuat konfigurasi inti AI. Fungsi mungkin terbatas.');
+        }
+    }
+    
+    // Panggil fungsi pengecekan saat DOM siap
+    loadSystemInstruction(); // <-- Panggil fungsi baru untuk memuat instruksi
+    // --- AKHIR DARI KODE FITUR MODE MAINTENANCE ---
 
   const optionButtons = document.querySelectorAll(".chatbot-options button");
   const optionsContainer = document.querySelector(".chatbot-options");
@@ -654,51 +631,89 @@ if (target.matches('.copy-code-btn')) {
         handleShareChat(messageWrapper);
     }
     
-    if (target.classList.contains('edit-icon')) {
-      const messageTextElement = messageWrapper.querySelector('.message-text');
-      if (messageWrapper.querySelector('.edit-container')) return;
-      const currentText = messageTextElement.innerText;
-      messageWrapper.setAttribute('data-original-text', currentText);
-      messageTextElement.style.display = 'none';
-      messageWrapper.querySelector('.message-meta').style.display = 'none';
-      const editContainer = document.createElement('div');
-      editContainer.className = 'edit-container';
-      editContainer.innerHTML = `
-        <textarea class="edit-textarea">${currentText}</textarea>
-        <div class="edit-controls">
-          <button class="save-edit-btn">Simpan & Kirim Ulang</button>
-          <button class="cancel-edit-btn">Batal</button>
-        </div>
-      `;
-      messageWrapper.appendChild(editContainer);
-      editContainer.querySelector('textarea').focus();
-    }
+    // --- FITUR EDIT PESAN YANG DISEMPURNAKAN ---
+// Letakkan event listener ini di dalam event listener utama 'chatBox.addEventListener('click', (e) => { ... });'
 
-    if (target.classList.contains('save-edit-btn')) {
-      const newText = messageWrapper.querySelector('.edit-textarea').value.trim();
-      const messageTextElement = messageWrapper.querySelector('.message-text');
-      messageTextElement.innerText = newText;
-      messageWrapper.querySelector('.edit-container').remove();
-      messageTextElement.style.display = 'block';
-      messageWrapper.querySelector('.message-meta').style.display = 'flex';
-      const nextBotMessage = messageWrapper.nextElementSibling;
-      if (nextBotMessage && nextBotMessage.classList.contains('bot')) {
-        nextBotMessage.remove();
-      }
-      saveChatHistory();
-      input.value = newText;
-      handleSendMessage();
-      input.value = "";
-    }
+// Memicu mode edit saat ikon edit diklik
+if (target.matches('.edit-icon, .edit-icon *')) {
+    const messageTextElement = messageWrapper.querySelector('.message-text');
+    // Mencegah mode edit ganda pada pesan yang sama
+    if (messageWrapper.classList.contains('is-editing')) return;
 
-    if (target.classList.contains('cancel-edit-btn')) {
-      const originalText = messageWrapper.getAttribute('data-original-text');
-      const messageTextElement = messageWrapper.querySelector('.message-text');
-      messageTextElement.innerText = originalText;
-      messageWrapper.querySelector('.edit-container').remove();
-      messageTextElement.style.display = 'block';
-      messageWrapper.querySelector('.message-meta').style.display = 'flex';
+    messageWrapper.classList.add('is-editing');
+    const currentText = messageTextElement.innerText;
+
+    // Simpan teks asli untuk pembatalan
+    messageWrapper.setAttribute('data-original-text', currentText);
+
+    // Sembunyikan teks asli dan buat area edit
+    messageTextElement.style.display = 'none';
+    messageWrapper.querySelector('.message-meta').style.display = 'none';
+
+    const editContainer = document.createElement('div');
+    editContainer.className = 'edit-container';
+    editContainer.innerHTML = `
+      <textarea class="edit-textarea"></textarea>
+      <div class="edit-controls">
+        <button class="cancel-edit-btn">Batal</button>
+        <button class="save-edit-btn">
+          <i class="fas fa-save"></i> Simpan & Kirim Ulang
+        </button>
+      </div>
+    `;
+    // Sisipkan area edit setelah elemen teks
+    messageTextElement.parentNode.insertBefore(editContainer, messageTextElement.nextSibling);
+
+    const textarea = editContainer.querySelector('.edit-textarea');
+    textarea.value = currentText;
+    textarea.focus();
+    // Atur tinggi textarea agar sesuai dengan konten
+    textarea.style.height = 'auto';
+    textarea.style.height = (textarea.scrollHeight) + 'px';
+    textarea.addEventListener('input', () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    });
+}
+
+// Aksi saat tombol "Simpan & Kirim Ulang" diklik
+if (target.matches('.save-edit-btn, .save-edit-btn *')) {
+    const newText = messageWrapper.querySelector('.edit-textarea').value.trim();
+
+    if (newText) {
+        // 1. Temukan dan hapus respons bot berikutnya (jika ada)
+        const nextBotMessage = messageWrapper.nextElementSibling;
+        if (nextBotMessage && nextBotMessage.classList.contains('bot')) {
+            nextBotMessage.remove();
+        }
+
+        // 2. Hapus pesan pengguna yang asli (yang sedang diedit)
+        messageWrapper.remove();
+
+        // 3. Simpan riwayat chat yang sudah diperbarui
+        saveChatHistory();
+
+        // 4. Masukkan teks yang sudah diedit ke input utama dan kirimkan sebagai pesan baru
+        input.value = newText;
+        handleSendMessage();
+        input.value = ""; // Kosongkan input setelah dikirim
+    } else {
+        alert("Pesan tidak boleh kosong.");
     }
+}
+
+// Aksi saat tombol "Batal" diklik
+if (target.matches('.cancel-edit-btn, .cancel-edit-btn *')) {
+    messageWrapper.classList.remove('is-editing');
+    const messageTextElement = messageWrapper.querySelector('.message-text');
+    
+    // Hapus kontainer edit
+    messageWrapper.querySelector('.edit-container').remove();
+    
+    // Tampilkan kembali teks asli dan meta
+    messageTextElement.style.display = 'block';
+    messageWrapper.querySelector('.message-meta').style.display = 'flex';
+}
 
     if (target.classList.contains('regenerate-icon')) {
       let previousMessage = messageWrapper.previousElementSibling;
@@ -726,9 +741,9 @@ if (target.matches('.copy-code-btn')) {
       console.log(`Feedback diterima: ${feedbackType}`);
     }
 
-    if (target.classList.contains('speak-icon')) {
-      const messageText = messageWrapper.querySelector('.message-text').innerText;
-      speakText(messageText, target);
+    if (target.matches('.speak-icon')) {
+    // Panggil manager TTS yang baru dengan parameter yang dibutuhkan
+    ttsManager.speak(messageWrapper, target);
     }
   });
 
@@ -754,23 +769,43 @@ if (target.matches('.copy-code-btn')) {
     }
   });
   
-  // --- FUNGSI UTAMA PENGIRIMAN PESAN (SUDAH DIPERBARUI) ---
   async function handleSendMessage() {
     const text = input.value.trim();
 
-    // --- PENGECEKAN KILL SWITCH ---
+    // Pengecekan Kill Switch dari system.json
     if (systemConfig && systemConfig.api_enabled === false) {
-        // Tampilkan pesan offline yang diatur di JSON
-        showBotOfflineMessage(systemConfig.api_offline_message, text); 
-        // Pulihkan UI karena tidak ada proses yang berjalan
-        restoreSendButton(); 
+        showBotOfflineMessage(systemConfig.api_offline_message, text);
+        restoreSendButton();
         input.disabled = false;
         input.focus();
-        return; // Hentikan eksekusi fungsi
+        return;
     }
-    // --- AKHIR PENGECEKAN ---
-
+    
     if (!text || isTyping) return;
+
+    // --- BAGIAN INTI: Manajemen Riwayat Cerdas (Hemat Data) ---
+    
+    let historyForContext = [...conversationHistory];
+
+    // 1. Jika riwayat terlalu panjang, pangkas secara cerdas HANYA untuk data yang akan dikirim.
+    //    Ini menjaga agar AI tetap mengingat konteks awal dan terbaru.
+    if (historyForContext.length > MAX_HISTORY_LENGTH) {
+        // Ambil 2 pesan pertama (untuk menjaga konteks awal percakapan)
+        const initialContext = historyForContext.slice(0, 2); 
+        // Ambil 8 pesan terakhir (MAX_HISTORY_LENGTH - 2) untuk menjaga konteks terbaru
+        const recentContext = historyForContext.slice(historyForContext.length - (MAX_HISTORY_LENGTH - 2));
+        
+        // Gabungkan keduanya untuk menjadi riwayat yang "diringkas"
+        historyForContext = [...initialContext, ...recentContext];
+    }
+
+    // 2. Format riwayat yang akan dikirim ke API (tanpa label peran).
+    const context = historyForContext.map(msg => msg.content).join('\n\n');
+
+    // 3. Gabungkan riwayat ringkas dengan pesan baru pengguna.
+    const contentWithHistory = context ? `${context}\n\n${text}` : text;
+    
+    // --- AKHIR DARI MANAJEMEN RIWAYAT ---
 
     btn.disabled = true;
     input.disabled = true;
@@ -789,8 +824,9 @@ if (target.matches('.copy-code-btn')) {
 
     const backendUrl = 'https://api.siputzx.my.id/api/ai/gpt3';
     const url = new URL(backendUrl);
+    // Kirim instruksi sistem dan konten yang sudah dilengkapi riwayat
     url.searchParams.append('prompt', SYSTEM_INSTRUCTION);
-    url.searchParams.append('content', text);
+    url.searchParams.append('content', contentWithHistory);
 
     try {
       await cancellableDelay(10000, fetchController.signal);
@@ -808,51 +844,47 @@ if (target.matches('.copy-code-btn')) {
 
       loader.remove();
       const data = await res.json();
-      
-      // --- LOG DIAGNOSTIK DIMASUKKAN DI SINI ---
-      console.log("1. Data mentah dari API:", data);
-      const rawBotMessage = data.data || ""; // Jadikan string kosong jika null/undefined
-      console.log("2. Pesan sebelum di-parse:", rawBotMessage);
+      const rawBotMessage = data.data || "";
+
+      // --- SIMPAN RIWAYAT ASLI SETELAH SUKSES ---
+      // Riwayat asli tetap utuh dan lengkap, tidak dipangkas.
+      conversationHistory.push({ role: 'user', content: text });
+      if (rawBotMessage) {
+        conversationHistory.push({ role: 'assistant', content: rawBotMessage });
+      }
+      // --- AKHIR PENYIMPANAN RIWAYAT ---
 
       if (isImageUrl(rawBotMessage)) {
         appendImageMessage("bot", rawBotMessage);
       } else {
         const formattedBotMessage = marked.parse(rawBotMessage);
-        console.log("3. Pesan setelah diubah jadi HTML:", formattedBotMessage);
-
-        // --- PENANGANAN PESAN KOSONG UNTUK MENCEGAH MACET ---
+        
         if (formattedBotMessage && formattedBotMessage.trim() !== '') {
           appendMessage("bot", formattedBotMessage);
         } else {
-          console.error("Pesan setelah diparse menjadi kosong. Kemungkinan API tidak mengembalikan teks.");
           appendInstantMessage("bot", "Maaf, saya tidak menerima respons yang valid dari server. Coba lagi.");
           restoreSendButton();
           input.disabled = false;
         }
       }
-    // ... di dalam fungsi handleSendMessage
     } catch (err) {
       loader.remove(); 
       console.error("API Fetch Error:", err);
-
-      // Ambil pesan default dari config jika terjadi error
       const offlineMessage = systemConfig.api_offline_message || "Terjadi kesalahan koneksi. Silakan coba lagi.";
 
       if (err.name === 'AbortError') {
           appendInstantMessage("bot", "Oke, generasi respons telah saya hentikan.");
       } else {
-          // Untuk semua error lainnya (jaringan, server, dll.), tampilkan pesan offline dari JSON
           showBotOfflineMessage(offlineMessage, text);
       }
-  } finally {
+    } finally {
       fetchController = null;
-      // Hanya pulihkan tombol jika proses pengetikan tidak sedang berjalan
       if (!isTyping) {
           restoreSendButton();
           input.disabled = false;
       }
-  }
-  }
+    }
+}
   
   /**
  * Menampilkan pesan bahwa bot sedang offline/mengalami kendala teknis.
@@ -1124,10 +1156,16 @@ function showBotOfflineMessage(message, originalQuery) {
   }
 
   function deleteChatHistory() {
+    // Hapus data dari localStorage
     localStorage.removeItem("chatSession");
+    
+    // KOSONGKAN RIWAYAT PERCAKAPAN DI MEMORI
+    conversationHistory = [];
+    
+    // Hapus tampilan chat dan muat ulang halaman untuk reset total
     chatBox.innerHTML = "";
     location.reload(); 
-  }
+}
   
   function scrollToBottom() {
   chatBox.lastElementChild?.scrollIntoView({
@@ -1155,50 +1193,137 @@ if (scrollToBottomBtn) {
   });
 }
     
-  function speakText(text, iconElement) {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'id-ID';
-    
-    document.querySelectorAll('.speak-icon.fa-stop-circle').forEach(icon => {
-        icon.classList.remove('fa-stop-circle');
-        icon.classList.add('fa-volume-up');
-    });
-    
-    utterance.onstart = () => {
-        iconElement.classList.remove('fa-volume-up');
-        iconElement.classList.add('fa-stop-circle');
-        iconElement.title = "Hentikan suara";
-    };
-    
-    utterance.onend = () => {
-        iconElement.classList.remove('fa-stop-circle');
-        iconElement.classList.add('fa-volume-up');
-        iconElement.title = "Baca teks";
-    };
-    
-    window.speechSynthesis.speak(utterance);
-  }
-  
-  menuButton.addEventListener('click', function(event) {
-        // Toggle (tambah/hapus) class 'show' pada menu dropdown
-        dropdownMenu.classList.toggle('show');
-        
-        // Menghentikan event agar tidak langsung ditangkap oleh 'window'
-        event.stopPropagation(); 
-    });
+  // --- FITUR TTS (TEXT-TO-SPEECH) CANGGIH V2 (BUG RESUME DIPERBAIKI) ---
+const ttsManager = {
+    utterance: null,
+    speakingElement: null,
+    iconElement: null,
+    isPaused: false,
+    // --- BARU: Variabel untuk melacak progres & teks asli ---
+    currentCharIndex: 0,
+    originalText: '',
 
-    // Tambahkan event listener untuk klik di mana saja di halaman
-    window.addEventListener('click', function(event) {
-        // Cek apakah menu sedang terbuka
-        if (dropdownMenu.classList.contains('show')) {
-            // Cek apakah yang diklik BUKAN tombol menu
-            if (!menuButton.contains(event.target)) {
-                // Jika ya, tutup menu dengan menghapus class 'show'
-                dropdownMenu.classList.remove('show');
+    stop(isFinal = true) {
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+        if (isFinal && this.speakingElement) {
+            this.speakingElement.classList.remove('is-speaking');
+        }
+        if (isFinal && this.iconElement) {
+            this.iconElement.className = 'fas fa-volume-up speak-icon';
+            this.iconElement.title = 'Baca teks';
+        }
+        if (isFinal) {
+            this.utterance = null;
+            this.speakingElement = null;
+            this.iconElement = null;
+            this.isPaused = false;
+            this.currentCharIndex = 0;
+            this.originalText = '';
+        }
+    },
+
+    // --- LOGIKA JEDA DIPERBARUI: Menghentikan suara dan menyimpan posisi ---
+    pause() {
+        if (!this.isPaused) {
+            this.isPaused = true;
+            // Kita panggil `cancel()` yang lebih andal daripada `pause()`
+            window.speechSynthesis.cancel();
+            this.iconElement.className = 'fas fa-play-circle speak-icon';
+            this.iconElement.title = 'Lanjutkan membaca';
+            this.speakingElement.classList.remove('is-speaking');
+        }
+    },
+
+    // --- LOGIKA LANJUTKAN DIPERBARUI: Memulai suara baru dari teks sisa ---
+    resume() {
+        if (this.isPaused) {
+            this.isPaused = false;
+            
+            // Ambil sisa teks dari posisi terakhir yang disimpan
+            const textToResume = this.originalText.substring(this.currentCharIndex);
+            
+            if (textToResume) {
+                // Buat dan konfigurasikan utterance BARU
+                const newUtterance = new SpeechSynthesisUtterance(textToResume);
+                newUtterance.lang = 'id-ID';
+                newUtterance.rate = 1.0;
+                newUtterance.pitch = 1.0;
+
+                // Lampirkan kembali semua event handler
+                this._attachEventListeners(newUtterance);
+                
+                this.utterance = newUtterance;
+                window.speechSynthesis.speak(this.utterance);
+            } else {
+                // Jika tidak ada teks tersisa, selesaikan saja.
+                this.stop();
             }
         }
-    });
+    },
+    
+    // --- FUNGSI BARU: Untuk melampirkan event listener ke utterance ---
+    _attachEventListeners(utteranceInstance) {
+        utteranceInstance.onstart = () => {
+            this.speakingElement.classList.add('is-speaking');
+            this.iconElement.className = 'fas fa-pause-circle speak-icon';
+            this.iconElement.title = 'Jeda';
+        };
+
+        // Event penting untuk melacak posisi karakter saat suara berjalan
+        utteranceInstance.onboundary = (event) => {
+            // Kita tambahkan posisi saat ini dengan posisi relatif dari teks sisa
+            this.currentCharIndex = this.originalText.length - event.target.text.length + event.charIndex;
+        };
+        
+        utteranceInstance.onend = () => {
+            // `onend` akan terpanggil saat `cancel()` dijalankan.
+            // Cek `isPaused` untuk mencegah reset total saat jeda.
+            if (!this.isPaused) {
+                this.stop();
+            }
+        };
+
+        utteranceInstance.onerror = (event) => {
+            console.error('SpeechSynthesis Error:', event.error);
+            this.stop();
+        };
+    },
+
+    speak(messageWrapper, iconElement) {
+        if (this.speakingElement === messageWrapper) {
+            if (this.isPaused) {
+                this.resume();
+            } else {
+                this.pause();
+            }
+            return;
+        }
+
+        this.stop(); // Hentikan suara lain yang mungkin sedang berjalan
+
+        const contentClone = messageWrapper.querySelector('.message-text').cloneNode(true);
+        contentClone.querySelectorAll('.code-block-wrapper, pre').forEach(codeBlock => {
+            codeBlock.textContent = ' Berikut adalah blok kode. ';
+        });
+
+        // Simpan teks asli dan reset posisi
+        this.originalText = contentClone.innerText;
+        this.currentCharIndex = 0;
+
+        if (!this.originalText) return;
+        
+        this.speakingElement = messageWrapper;
+        this.iconElement = iconElement;
+        
+        const newUtterance = new SpeechSynthesisUtterance(this.originalText);
+        this._attachEventListeners(newUtterance); // Gunakan fungsi helper
+        
+        this.utterance = newUtterance;
+        window.speechSynthesis.speak(this.utterance);
+    }
+};
 
     // Ambil elemen dari DOM
     const overlayContainer = document.getElementById('overlay-fitur-baru');
@@ -1722,9 +1847,27 @@ class Typewriter {
         this.metaElement = metaElement;
         this.htmlContent = htmlContent;
 
-        // --- Konfigurasi untuk nuansa pengetikan yang lebih natural ---
-        this.baseSpeed = 25; // Kecepatan dasar dalam milidetik per karakter.
-        this.speedJitter = 15; // Variasi acak untuk kecepatan (plus/minus).
+        // --- KONFIGURASI BARU: Kecepatan dinamis berdasarkan panjang teks ---
+        const textLength = htmlContent.replace(/<[^>]*>?/gm, '').length; // Hitung panjang teks bersih (tanpa HTML)
+        const MIN_SPEED = 10; // Kecepatan tercepat (ms) untuk teks sangat panjang
+        const MAX_SPEED = 45; // Kecepatan terlambat (ms) untuk teks sangat pendek
+        const SHORT_TEXT_THRESHOLD = 100; // Batas teks dianggap pendek
+        const LONG_TEXT_THRESHOLD = 800;  // Batas teks dianggap panjang
+
+        if (textLength <= SHORT_TEXT_THRESHOLD) {
+            this.baseSpeed = MAX_SPEED;
+        } else if (textLength >= LONG_TEXT_THRESHOLD) {
+            this.baseSpeed = MIN_SPEED;
+        } else {
+            // Interpolasi linear untuk kecepatan antara teks pendek dan panjang
+            const speedRange = MAX_SPEED - MIN_SPEED;
+            const lengthRange = LONG_TEXT_THRESHOLD - SHORT_TEXT_THRESHOLD;
+            const lengthProgress = (textLength - SHORT_TEXT_THRESHOLD) / lengthRange;
+            this.baseSpeed = MAX_SPEED - (speedRange * lengthProgress);
+        }
+        // --- AKHIR DARI KONFIGURASI BARU ---
+
+        this.speedJitter = this.baseSpeed * 0.5; // Variasi acak berdasarkan kecepatan dasar
         this.pauseOnPunctuation = 300; // Jeda ekstra saat bertemu tanda baca.
 
         // --- Status Internal ---
@@ -1934,7 +2077,6 @@ class Typewriter {
         checkMessageCount(); // Panggil penghitung pesan setelah selesai
     }
 }
-
 
 /**
  * Fungsi pemicu untuk memulai efek typewriter.

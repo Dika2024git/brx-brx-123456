@@ -30,28 +30,28 @@
     "name": "Mulai Chatbot AI",
     "short_name": "Chat AI",
     "description": "Buka chatbot AI",
-    "url": "/chat",
+    "url": "/",
     "icons": [{ "src": "./chat_bubble.png", "sizes": "192x192" }]
   },
   {
     "name": "Riwayat Percakapan",
     "short_name": "Riwayat",
     "description": "Lihat riwayat percakapan chatbot",
-    "url": "/history",
+    "url": "/",
     "icons": [{ "src": "./history.png", "sizes": "192x192" }]
   },
   {
     "name": "Pengaturan AI",
     "short_name": "Pengaturan",
     "description": "Atur gaya chatbot dan preferensi",
-    "url": "/settings",
+    "url": "/",
     "icons": [{ "src": "./robot.png", "sizes": "192x192" }]
   },
   {
     "name": "Buat Gambar AI",
     "short_name": "Gambar AI",
     "description": "Gunakan AI untuk membuat gambar",
-    "url": "/ai-image",
+    "url": "/",
     "icons": [{ "src": "./format_paint.png", "sizes": "192x192" }]
   }
 ]
